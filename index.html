@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <style>
 :root{
   --bg:#070d1c;--panel:#0b1530;--line:#182a52;--txt:#c9d6f2;--mut:#6f82ad;
@@ -103,6 +106,8 @@ ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;b
 .cxf input{width:270px;max-width:100%}
 .mq{font-size:15px;margin:0 0 6px;overflow-wrap:anywhere}
 .fok{color:#4fcf79}.fko{color:#e0566b}
+.katex{font-size:1.12em}
+.pvx{color:var(--acc);margin-left:4px;min-height:1.4em}
 .sec{font-size:15px;margin:18px 0 10px;color:var(--mut);font-weight:600}
 .mod{margin:0 0 26px}
 .mh{font-size:17px;margin:0 0 12px;padding-left:10px;border-left:4px solid var(--c)}
@@ -497,6 +502,63 @@ function chkField(f,val){
 
 const SUP={'2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶'};
 const pr=s=>esc(String(s).replace(/\^\(?(\d)\)?/g,(m,d)=>SUP[d]||m).replace(/\*/g,'·').replace(/-/g,'−'));
+
+/* ===== LaTeX : conversion d'une formule saisie en LaTeX (KaTeX) ===== */
+function mtex(src){
+  const s=String(src).toLowerCase().replace(/²/g,'^2').replace(/³/g,'^3').replace(/×|·/g,'*').replace(/−|–/g,'-').replace(/√/g,'sqrt').replace(/π/g,'pi').replace(/(\d),(\d)/g,'$1.$2').replace(/\s+/g,'');
+  if(!s||!/^[0-9a-z+\-*/^().]+$/.test(s))throw 0;
+  const tk=[];
+  for(let i=0;i<s.length;){
+    let m=/^(\d+\.?\d*|\.\d+)/.exec(s.slice(i));
+    if(m){tk.push({n:m[1].replace(/\.$/,'')});i+=m[1].length;continue}
+    m=/^[a-z]+/.exec(s.slice(i));
+    if(m){let w=m[0];i+=w.length;
+      while(w){const f=MK.find(k=>w.startsWith(k));if(f){tk.push({id:f});w=w.slice(f.length)}else{tk.push({id:w[0]});w=w.slice(1)}}
+      continue}
+    tk.push({op:s[i]});i++;
+  }
+  for(let i=1;i<tk.length;i++)if(tk[i].n!==undefined&&tk[i-1].n!==undefined)throw 0;
+  let p=0;const peek=()=>tk[p],isOp=o=>peek()&&peek().op===o,starts=t=>t&&(t.n!==undefined||t.id||t.op==='(');
+  const unwrap=u=>{if(!u.startsWith('\\left(')||!u.endsWith('\\right)'))return u;let d=0,i=0;
+    while(i<u.length){if(u.startsWith('\\left(',i)){d++;i+=6}else if(u.startsWith('\\right)',i)){d--;i+=7;if(!d)return i===u.length?u.slice(6,-7):u}else i++}return u};
+  const expr=()=>{let a=term();while(isOp('+')||isOp('-')){const o=tk[p++].op;a+=o+term()}return a};
+  const term=()=>{let a=unary();for(;;){const t=peek();
+    if(t&&t.op==='/'){p++;a='\\frac{'+unwrap(a)+'}{'+unwrap(unary())+'}';continue}
+    let ex=false;if(t&&t.op==='*'){p++;ex=true}else if(!starts(t))break;
+    const num=peek()&&peek().n!==undefined,b=unary();a+=(num?' \\cdot ':' ')+b}
+    return a};
+  const unary=()=>{if(isOp('-')){p++;return '-'+unary()}if(isOp('+')){p++;return unary()}return pw()};
+  const pw=()=>{const a=atom();if(isOp('^')){p++;return a+'^{'+unary()+'}'}return a};
+  const close=()=>{if(!isOp(')'))throw 0;p++};
+  const atom=()=>{const t=tk[p++];if(!t)throw 0;
+    if(t.n!==undefined)return t.n;
+    if(t.op==='('){const a=expr();close();return '\\left('+a+'\\right)'}
+    if(t.id){
+      if(MF[t.id]){if(!isOp('('))throw 0;p++;const a=expr();close();
+        return t.id==='sqrt'?'\\sqrt{'+a+'}':t.id==='abs'?'\\left|'+a+'\\right|':'\\'+(t.id==='log'?'ln':t.id)+'\\left('+a+'\\right)'}
+      return t.id==='pi'?'\\pi ':t.id}
+    throw 0};
+  const r=expr();if(p<tk.length)throw 0;return r;
+}
+function pvUpdate(e,v){
+  if(!e)return;
+  if(!v||!window.katex){e.textContent='';return}
+  try{window.katex.render(mtex(v),e,{throwOnError:false})}catch(_){e.textContent=''}
+}
+const MDEL=[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false},{left:'$',right:'$',display:false}];
+function mathRender(){
+  const v=$('view');if(!v||!window.renderMathInElement)return;
+  try{window.renderMathInElement(v,{delimiters:MDEL,throwOnError:false})}catch(e){}
+  document.querySelectorAll('.pvx').forEach(e=>pvUpdate(e,((S[e.dataset.w]||{}).ans||{})[e.dataset.id]));
+}
+window.addEventListener('load',mathRender);
+const PX='\\frac{\\partial f}{\\partial x}',PY='\\frac{\\partial f}{\\partial y}';
+const TX=s=>{try{return '\\('+mtex(s)+'\\)'}catch(e){return pr(s)}};
+const F=s=>{try{return '\\(f(x,y)='+mtex(s)+'\\)'}catch(e){return 'f(x, y) = '+pr(s)}};
+const TL=(l,s)=>{try{return '\\('+l+'='+mtex(s)+'\\)'}catch(e){return esc(l)+' = '+pr(s)}};
+const LM=s=>{try{return '\\(\\lim_{(x,y)\\to(0,0)}\; '+mtex(s)+'\\)'}catch(e){return 'lim '+pr(s)}};
+const II=s=>{try{return '\\(\\iint_D '+mtex(s)+'\\,dx\\,dy\\)'}catch(e){return '∬ '+pr(s)}};
+const IN=(a,b,f)=>{try{return '\\(I=\\int_{'+mtex(a)+'}^{'+mtex(b)+'} '+mtex(f)+'\\,dx\\)'}catch(e){return 'I = ∫ '+pr(f)}};
 const ri=(r,a,b)=>a+Math.floor(r()*(b-a+1));
 const pickN=(r,n,k)=>{const a=[...Array(n).keys()];for(let i=n-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,k)};
 const fmt=v=>String(+v.toFixed(4));
@@ -588,26 +650,26 @@ const CALC={
  dpartielles:{n:'Dérivées partielles',g(r){
   return{titre:'Dérivées partielles',consigne:'Calcule les dérivées partielles premières de chaque fonction.',
    items:pickN(r,DT.length,2).map(k=>{const d=DT[k](r);
-    return{raw:d,q:`f(x, y) = ${pr(d.f)}`,hints:HPD,
+    return{raw:d,q:`${F(d.f)}`,hints:HPD,
      fields:[{id:'x',t:'expr',vars:XY,label:'∂f/∂x =',fn:mparse(d.fx,XY)},{id:'y',t:'expr',vars:XY,label:'∂f/∂y =',fn:mparse(d.fy,XY)}],
-     sol:[`∂f/∂x = ${pr(d.fx)}`,`∂f/∂y = ${pr(d.fy)}`]}})}}},
+     sol:[`${TL(PX,d.fx)}`,`${TL(PY,d.fy)}`]}})}}},
  differentielle:{n:'Gradient et plan tangent',g(r){
   const d=DT[pickN(r,DT.length,1)[0]](r),a=ri(r,1,2),b=ri(r,1,2),f=mparse(d.f,XY),fx=mparse(d.fx,XY),fy=mparse(d.fy,XY),P={x:a,y:b},f0=f(P),px=fx(P),py=fy(P);
-  return{titre:'Gradient et plan tangent',consigne:`On considère f(x, y) = ${pr(d.f)} et le point A = (${a}, ${b}). Les réponses numériques peuvent s'écrire avec e, ln, sqrt (ex : 2*e, ln(2), sqrt(5)) ou en décimal.`,
+  return{titre:'Gradient et plan tangent',consigne:`On considère ${F(d.f)} et le point A = (${a}, ${b}). Les réponses numériques peuvent s'écrire avec e, ln, sqrt (ex : 2*e, ln(2), sqrt(5)) ou en décimal.`,
    items:[{raw:{d,a,b},q:`En A = (${a}, ${b}) :`,
     hints:["∂f/∂x(A) et ∂f/∂y(A) : calcule les dérivées partielles puis remplace x et y.","Plan tangent : z = f(a,b) + ∂f/∂x(a,b)·(x − a) + ∂f/∂y(a,b)·(y − b)."],
     fields:[{id:'x',t:'num',label:'∂f/∂x(A) =',ans:px},{id:'y',t:'num',label:'∂f/∂y(A) =',ans:py},
      {id:'z',t:'expr',vars:XY,label:'plan tangent z =',fn:v=>f0+px*(v.x-a)+py*(v.y-b)}],
-    sol:[`∂f/∂x = ${pr(d.fx)} ; ∂f/∂y = ${pr(d.fy)}`,`f(A) ≈ ${fmt(f0)}, ∂f/∂x(A) ≈ ${fmt(px)}, ∂f/∂y(A) ≈ ${fmt(py)}`,`z ≈ ${fmt(f0)} + ${fmt(px)}(x − ${a}) + ${fmt(py)}(y − ${b})`]}]}}},
+    sol:[`${TL(PX,d.fx)} ; ${TL(PY,d.fy)}`,`f(A) ≈ ${fmt(f0)}, ∂f/∂x(A) ≈ ${fmt(px)}, ∂f/∂y(A) ≈ ${fmt(py)}`,`z ≈ ${fmt(f0)} + ${fmt(px)}(x − ${a}) + ${fmt(py)}(y − ${b})`]}]}}},
  limites:{n:'Limites en (0,0)',g(r){
   return{titre:'Limites en (0,0)',consigne:"Détermine la limite en (0,0) de chaque fonction. Écris un nombre, ou « n'existe pas » s'il n'y a pas de limite.",
    items:pickN(r,LT.length,3).map(k=>{const d=LT[k](r);
-    return{raw:d,q:`lim (x,y)→(0,0) de ${pr(d.f)}`,hints:["Essaie les chemins y = 0, x = 0 puis y = x : si deux valeurs diffèrent, il n'y a pas de limite.","Si les chemins donnent la même valeur, passe en polaires (x = r·cosθ, y = r·sinθ) et majore par une fonction de r seul."],
+    return{raw:d,q:`${LM(d.f)}`,hints:["Essaie les chemins y = 0, x = 0 puis y = x : si deux valeurs diffèrent, il n'y a pas de limite.","Si les chemins donnent la même valeur, passe en polaires (x = r·cosθ, y = r·sinθ) et majore par une fonction de r seul."],
      fields:[{id:'l',t:'lim',label:'limite =',ans:d.l}],sol:[d.l===null?"La limite n'existe pas.":'Limite = '+d.l,d.s]}})}}},
  continuite:{n:'Continuité en (0,0)',g(r){
   const k=LT_CONT[ri(r,0,LT_CONT.length-1)],d=LT[k](r),c=CT[ri(r,0,CT.length-1)](r);
   return{titre:'Continuité',consigne:'Étude de la continuité en (0,0).',items:[
-   {raw:d,q:`f(x, y) = ${pr(d.f)} si (x,y) ≠ (0,0), et f(0,0) = c.`,hints:["f est continue en (0,0) si et seulement si c est égal à la limite de f en (0,0)."],
+   {raw:d,q:`${F(d.f)} si (x,y) ≠ (0,0), et f(0,0) = c.`,hints:["f est continue en (0,0) si et seulement si c est égal à la limite de f en (0,0)."],
     fields:[{id:'c',t:'lim',label:'valeur de c =',ans:d.l}],sol:[d.l===null?"Aucune valeur de c ne convient : f n'a pas de limite en (0,0).":'c = '+d.l,d.s]},
    {raw:c,q:`g(x, y) = ${c.f} si (x,y) ≠ (0,0), et g(0,0) = 0.`,hints:["Dérivées partielles en 0 : étudie g(x,0) et g(0,y).","Continuité : cherche la limite (chemins, puis polaires)."],
     fields:[{id:'d',t:'choice',label:'dérivées partielles en (0,0) ?',opts:['existent','n\'existent pas'],ans:'existent'},{id:'c',t:'choice',label:'g continue en (0,0) ?',opts:OUI,ans:c.c?'oui':'non'}],
@@ -618,7 +680,7 @@ const CALC={
    f=polyStr([[a,'x^2'],[b,'y^2'],[c,'x*y'],[d,'x'],[e,'y'],[k,'']]),
    nat=det<0?'point selle':a>0?'minimum local':'maximum local';
   return{titre:'Extrema',consigne:'Cherche le point critique de f et détermine sa nature.',items:[
-   {raw:f,q:`f(x, y) = ${pr(f)}`,hints:["Point critique : résous ∂f/∂x = 0 et ∂f/∂y = 0 (système linéaire).","Notation de Monge : r = ∂²f/∂x², s = ∂²f/∂x∂y, t = ∂²f/∂y². Si rt − s² > 0 : extremum (minimum si r > 0, maximum si r < 0) ; si rt − s² < 0 : point selle."],
+   {raw:f,q:`${F(f)}`,hints:["Point critique : résous ∂f/∂x = 0 et ∂f/∂y = 0 (système linéaire).","Notation de Monge : r = ∂²f/∂x², s = ∂²f/∂x∂y, t = ∂²f/∂y². Si rt − s² > 0 : extremum (minimum si r > 0, maximum si r < 0) ; si rt − s² < 0 : point selle."],
     fields:[{id:'x',t:'num',label:'abscisse x₀ =',ans:x0},{id:'y',t:'num',label:'ordonnée y₀ =',ans:y0},{id:'n',t:'choice',label:'nature :',opts:['minimum local','maximum local','point selle'],ans:nat}],
     sol:[`Le point critique est (${x0}, ${y0}).`,`r = ${2*a}, s = ${c}, t = ${2*b}, rt − s² = ${det}.`,`Nature : ${nat}.`]}]}}},
  normes:{n:'Normes, distances et boules',g(r){
@@ -631,20 +693,20 @@ const CALC={
    {q:`u = (${u[0]}, ${u[1]})`,hints:["‖u‖₁ = |x| + |y| ; ‖u‖₂ = √(x² + y²) ; ‖u‖∞ = max(|x|, |y|)."],
     fields:[{id:'1',t:'num',label:'‖u‖₁ =',ans:nrm(u,1)},{id:'2',t:'num',label:'‖u‖₂ =',ans:nrm(u,2)},{id:'i',t:'num',label:'‖u‖∞ =',ans:nrm(u,3)}],
     sol:[`‖u‖₁ = ${nrm(u,1)}`,`‖u‖₂ = √${u[0]*u[0]+u[1]*u[1]} ≈ ${fmt(nrm(u,2))}`,`‖u‖∞ = ${nrm(u,3)}`]},
-   {q:`Distance euclidienne du point A = (${x0}, ${y0}) à la droite D : y = ${pr(polyStr([[m,'x'],[p,'']]))}.`,hints:["Écris D sous la forme m·x − y + p = 0, puis d = |m·x₀ − y₀ + p| / √(m² + 1)."],
+   {q:`Distance euclidienne du point A = (${x0}, ${y0}) à la droite D : y = ${TX(polyStr([[m,'x'],[p,'']]))}.`,hints:["Écris D sous la forme m·x − y + p = 0, puis d = |m·x₀ − y₀ + p| / √(m² + 1)."],
     fields:[{id:'d',t:'num',label:'d(A, D) =',ans:dist}],sol:[`d = |${m}·${x0} − ${y0} + ${p}| / √${m*m+1} ≈ ${fmt(dist)}`]},
    {q:`B désigne la boule fermée de centre C = (${C[0]}, ${C[1]}) et de rayon ${R} pour la norme ‖·‖${kn === 2 ? '₂' : kn === 1 ? '₁' : '∞'}. Le point P = (${P[0]}, ${P[1]}) appartient-il à B ?`,hints:["P ∈ B si et seulement si ‖P − C‖ ≤ rayon."],
     fields:[{id:'b',t:'choice',label:'P ∈ B ?',opts:OUI,ans:inb?'oui':'non'}],sol:[`P − C = (${P[0]-C[0]}, ${P[1]-C[1]}), norme ≈ ${fmt(nrm([P[0]-C[0],P[1]-C[1]],kk))}, rayon ${R} : ${inb?'oui':'non'}.`]}]}}},
  domaine:{n:'Domaine de définition',g(r){
   return{titre:'Domaine de définition',consigne:'Pour chaque fonction, indique si les points proposés appartiennent à son domaine de définition.',
    items:pickN(r,DOM.length,2).map(k=>{const d=DOM[k],pts=[0,1,2].map(()=>[ri(r,-3,3),ri(r,-3,3)]);
-    return{raw:d,q:`f(x, y) = ${pr(d.f)}`,hints:["ln(u) demande u > 0 ; √u demande u ≥ 0 ; 1/u demande u ≠ 0.","Écris toutes les conditions, puis teste chaque point."],
+    return{raw:d,q:`${F(d.f)}`,hints:["ln(u) demande u > 0 ; √u demande u ≥ 0 ; 1/u demande u ≠ 0.","Écris toutes les conditions, puis teste chaque point."],
      fields:pts.map((q,i)=>({id:'p'+i,t:'choice',label:`(${q[0]}, ${q[1]}) ∈ D ?`,opts:OUI,ans:d.c(q[0],q[1])?'oui':'non'})),
      sol:[`D = {(x,y) : ${d.d}}`]}})}}},
  niveau:{n:'Lignes de niveau',g(r){
   return{titre:'Lignes de niveau',consigne:'Étudie les lignes de niveau de chaque fonction.',
    items:pickN(r,NIV.length,2).map(k=>{const d=NIV[k](r),P={x:ri(r,-2,3),y:ri(r,-2,3)};
-    return{raw:d,q:`f(x, y) = ${pr(d.f)}`,hints:["La ligne de niveau k est l'ensemble {f(x,y) = k}.","Pour le niveau du point (x₀,y₀) : calcule f(x₀,y₀)."],
+    return{raw:d,q:`${F(d.f)}`,hints:["La ligne de niveau k est l'ensemble {f(x,y) = k}.","Pour le niveau du point (x₀,y₀) : calcule f(x₀,y₀)."],
      fields:[{id:'n',t:'choice',label:'forme des lignes de niveau :',opts:['droite','cercle','ellipse','hyperbole','parabole'],ans:d.nat},{id:'k',t:'num',label:`niveau passant par (${P.x}, ${P.y}) :`,ans:d.fn(P)}],
      sol:[d.s,`f(${P.x}, ${P.y}) = ${d.fn(P)}`]}})}}},
  topologie:{n:'Topologie : ouvert, fermé, borné',g(r){
@@ -655,9 +717,9 @@ const CALC={
  chaine:{n:'Règle de la chaîne',g(r){
   return{titre:'Règle de la chaîne',consigne:'Soit h(t) = f(x(t), y(t)). Calcule h′ au point indiqué (réponse exacte avec e, ln, sqrt, ou décimale).',
    items:pickN(r,DT.length,2).map(k=>{const d=DT[k](r),c=CHN[ri(r,0,CHN.length-1)],fx=mparse(d.fx,XY),fy=mparse(d.fy,XY),X=mparse(c.x,['t']),Y=mparse(c.y,['t']),DX=mparse(c.dx,['t']),DY=mparse(c.dy,['t']),T={t:1},P={x:X(T),y:Y(T)},v=fx(P)*DX(T)+fy(P)*DY(T);
-    return{raw:{d,c},q:`f(x, y) = ${pr(d.f)}, x(t) = ${pr(c.x)}, y(t) = ${pr(c.y)}`,hints:["h′(t) = ∂f/∂x(x(t),y(t))·x′(t) + ∂f/∂y(x(t),y(t))·y′(t).","Calcule d'abord x(1), y(1), x′(1), y′(1), puis les dérivées partielles en (x(1), y(1))."],
+    return{raw:{d,c},q:`${F(d.f)}, ${TL('x(t)',c.x)}, ${TL('y(t)',c.y)}`,hints:["h′(t) = ∂f/∂x(x(t),y(t))·x′(t) + ∂f/∂y(x(t),y(t))·y′(t).","Calcule d'abord x(1), y(1), x′(1), y′(1), puis les dérivées partielles en (x(1), y(1))."],
      fields:[{id:'h',t:'num',label:'h′(1) =',ans:v}],
-     sol:[`∂f/∂x = ${pr(d.fx)}, ∂f/∂y = ${pr(d.fy)}`,`x′(t) = ${pr(c.dx)}, y′(t) = ${pr(c.dy)}`,`(x(1), y(1)) = (${fmt(P.x)}, ${fmt(P.y)}) ; h′(1) ≈ ${fmt(v)}`]}})}}}
+     sol:[`${TL(PX,d.fx)}, ${TL(PY,d.fy)}`,`${TL("x'(t)",c.dx)}, ${TL("y'(t)",c.dy)}`,`(x(1), y(1)) = (${fmt(P.x)}, ${fmt(P.y)}) ; h′(1) ≈ ${fmt(v)}`]}})}}}
 };
 const CALC_KEYS=Object.keys(CALC);
 const hsh=s=>[...s].reduce((a,c)=>(a*31+c.charCodeAt(0))|0,7);
@@ -674,7 +736,7 @@ function gl(f,a,b,m=6){let s=0;const h=(b-a)/m;for(let k=0;k<m;k++){const c=a+h*
 const dbl=(f,a,b,g1,g2)=>gl(x=>gl(y=>f(x,y),g1(x),g2(x)),a,b,20);
 const pol=(f,R,t0,t1)=>gl(t=>gl(r=>f(r*Math.cos(t),r*Math.sin(t))*r,0,R),t0,t1);
 const rd=v=>Math.abs(v)<1e-9?0:v;
-const one=(q,ex,hints,sol,label)=>({q,hints,fields:[{id:'v',t:'num',label:label||'valeur =',ans:mnum(ex),ex}],sol:[...sol,'Valeur exacte : '+ex.replace(/\*/g,'·')]});
+const one=(q,ex,hints,sol,label)=>({q,hints,fields:[{id:'v',t:'num',label:label||'valeur =',ans:mnum(ex),ex}],sol:[...sol,'Valeur exacte : '+TX(ex)]});
 const EXA="Donne les valeurs exactes avec pi, ln, e, sqrt (ex : pi/8, ln(2)/3, (e-1)/2) ou en décimal.";
 const F2=['x','y'];
 const IS=[
@@ -732,16 +794,16 @@ Object.assign(CALC,{
   return{titre:'Intégrales simples',consigne:'Calcule ces intégrales simples. '+EXA,
    items:pickN(r,IS.length,3).map(k=>{const d=IS[k](r),A=mnum(d.a),B=mnum(d.b);
     const g=mparse(d.f,['x']);
-    return Object.assign(one(`I = ∫ de ${d.a.replace('pi','π')} à ${d.b.replace('pi','π')} de ${pr(d.f)} dx`,d.ex,["Trouve une primitive (ou intégrale par parties, ou changement de variable).","Évalue entre les bornes."],[`Valeur ≈ ${fmt(gl(v=>g({x:v}),A,B))}`],'I ='),{raw:{d,A,B}})})}}},
+    return Object.assign(one(`${IN(d.a,d.b,d.f)}`,d.ex,["Trouve une primitive (ou intégrale par parties, ou changement de variable).","Évalue entre les bornes."],[`Valeur ≈ ${fmt(gl(v=>g({x:v}),A,B))}`],'I ='),{raw:{d,A,B}})})}}},
  intrect:{n:'Double intégrale sur un rectangle',g(r){
   return{titre:'Intégrale double sur un rectangle',consigne:'Calcule chaque intégrale double (théorème de Fubini). '+EXA,
    items:pickN(r,RC.length,3).map(k=>{const f=RC[k].f,[a,b,c,d]=[[0,1,0,1],[0,2,0,1],[-1,1,0,2],[0,1,-1,1],[0,2,0,2]][ri(r,0,4)],g=mparse(f,F2),v=rd(dbl((x,y)=>g({x,y}),a,b,()=>c,()=>d));
-    return{raw:{f,a,b,c,d},q:`∬ ${pr(f)} dx dy sur D = [${a}, ${b}] × [${c}, ${d}]`,hints:["Fubini : intègre d'abord en y (x fixé), puis en x.","Pour un produit f(x)·g(y), c'est le produit des deux intégrales simples."],
+    return{raw:{f,a,b,c,d},q:`${II(f)} sur \\(D=[${a},${b}]\\times[${c},${d}]\\)`,hints:["Fubini : intègre d'abord en y (x fixé), puis en x.","Pour un produit f(x)·g(y), c'est le produit des deux intégrales simples."],
      fields:[{id:'v',t:'num',label:'valeur =',ans:v}],sol:[`Valeur ≈ ${fmt(v)}`]}})}}},
  intdomaine:{n:'Double intégrale sur un domaine',g(r){
   return{titre:'Intégrale double sur un domaine',consigne:'Dessine le domaine, puis calcule. '+EXA,
    items:pickN(r,DD.length,2).map(k=>{const D=DD[k](r),f=D.fs[ri(r,0,D.fs.length-1)],g=mparse(f,F2),v=rd(dbl((x,y)=>g({x,y}),D.a,D.b,D.g1,D.g2));
-    return{raw:{D,f},q:`∬ ${pr(f)} dx dy sur D = {(x,y) : ${D.d}}`,hints:["Fais un schéma du domaine.","Intègre d'abord en y entre les deux courbes, puis la fonction de x obtenue entre les bornes de x."],
+    return{raw:{D,f},q:`${II(f)} sur D = {(x,y) : ${D.d}}`,hints:["Fais un schéma du domaine.","Intègre d'abord en y entre les deux courbes, puis la fonction de x obtenue entre les bornes de x."],
      fields:[{id:'v',t:'num',label:'valeur =',ans:v}],sol:[`Bornes : ${D.d}`,`Valeur ≈ ${fmt(v)}`]}})}}},
  ordre:{n:'Changer l\'ordre d\'intégration',g(r){
   const k=ri(r,1,2),T=[
@@ -753,7 +815,7 @@ Object.assign(CALC,{
  polaires:{n:'Coordonnées polaires',g(r){
   return{titre:'Coordonnées polaires',consigne:'Passe en coordonnées polaires pour calculer. '+EXA,
    items:pickN(r,PL.length,2).map(k=>{const R=ri(r,1,2),s=SECT[ri(r,0,2)],p=PL[k];
-    return Object.assign(one(`∬ ${pr(p.f)} dx dy sur ${s[0]} de rayon ${R} centré en O`,p.ex(R,s[1]),["Pose x = r·cosθ, y = r·sinθ ; dx dy = r dr dθ.","Décris le domaine : r ∈ [0, R], θ dans l'intervalle de l'angle."],["Les variables se séparent : ∫ dθ × ∫ f(r)·r dr."],'valeur ='),{raw:{p,R,s}})})}}},
+    return Object.assign(one(`${II(p.f)} sur ${s[0]} de rayon ${R} centré en O`,p.ex(R,s[1]),["Pose x = r·cosθ, y = r·sinθ ; dx dy = r dr dθ.","Décris le domaine : r ∈ [0, R], θ dans l'intervalle de l'angle."],["Les variables se séparent : ∫ dθ × ∫ f(r)·r dr."],'valeur ='),{raw:{p,R,s}})})}}},
  aires:{n:'Aires (polaires, changement de variables)',g(r){
   return{titre:'Calculs d\'aires',consigne:'Calcule l\'aire demandée. '+EXA,
    items:pickN(r,AIRE.length,3).map(k=>{const d=AIRE[k](r);return one(`Aire de ${d.q}`,d.ex,[d.h],[d.s],'aire =')})}}},
@@ -775,13 +837,13 @@ Object.assign(CALC,{
 
 
 /* ---- affichage commun (entraînement et partiel) ---- */
-function cxSet(w,id,v){S[w].ans[id]=v}
+function cxSet(w,id,v){S[w].ans[id]=v;pvUpdate($('pv_'+id),v)}
 function cxFieldHtml(f,id,st,show){
   const v=st.ans[id]||'',res=show?st.res[id]:null,cls=res?(res.ok?'fok':'fko'):'';
   const inp=f.t==='choice'
     ?`<select onchange="cxSet('${st.w}','${id}',this.value)" aria-label="${esc(f.label)}"><option value="">—</option>${f.opts.map(o=>`<option value="${esc(o)}"${v===o?' selected':''}>${esc(o)}</option>`).join('')}</select>`
-    :`<input type="text" value="${esc(v)}" oninput="cxSet('${st.w}','${id}',this.value)" placeholder="${f.t==='lim'?'nombre ou « n\'existe pas »':f.t==='expr'?'expression':'nombre'}" aria-label="${esc(f.label)}" autocomplete="off" spellcheck="false">`;
-  return `<div class="cxf ${cls}"><label>${esc(f.label)}</label>${inp}${res?(res.ok?'<span class="fok"> ✓ juste</span>':`<span class="fko"> ✗ ${esc(res.m||'faux')}</span>`):''}</div>`;
+    :`<input type="text" value="${esc(v)}" oninput="cxSet('${st.w}','${id}',this.value)" placeholder="${f.t==='lim'?'nombre ou « n\'existe pas »':f.t==='expr'?'expression':'nombre'}" aria-label="${esc(f.label)}" autocomplete="off" spellcheck="false"><span class="pvx" id="pv_${id}" data-w="${st.w}" data-id="${id}"></span>`;
+  return `<div class="cxf ${cls}"><label>${esc(f.label).replace('∂f/∂x','\\(\\frac{\\partial f}{\\partial x}\\)').replace('∂f/∂y','\\(\\frac{\\partial f}{\\partial y}\\)')}</label>${inp}${res?(res.ok?'<span class="fok"> ✓ juste</span>':`<span class="fko"> ✗ ${esc(res.m||'faux')}</span>`):''}</div>`;
 }
 function cxItemHtml(it,i,pre,st,o){
   const ids=it.fields.map(f=>pre+i+'_'+f.id),shown=o.show;
@@ -935,7 +997,7 @@ function render(){
   else if(S.err)html=`<section class="panel"><p class="bad">Impossible de charger les données : ${esc(S.err)}</p><div class="row"><button class="btn" onclick="enter(S.user)">Réessayer</button></div></section>`;
   else html=views[S.v]();
   $('view').innerHTML=(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html;
-  bindNotes();bindGen();ptBind();
+  bindNotes();bindGen();ptBind();mathRender();
 }
 /* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
 const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y4tkgIlrNoHjjsRSw_DjjA_NrBmdQfr';
