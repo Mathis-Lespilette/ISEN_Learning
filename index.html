@@ -107,7 +107,12 @@ ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;b
 .mq{font-size:15px;margin:0 0 6px;overflow-wrap:anywhere}
 .fok{color:#4fcf79}.fko{color:#e0566b}
 .katex{font-size:1.12em}
-.pvx{color:var(--acc);margin-left:4px;min-height:1.4em}
+.pvx{color:var(--acc);margin-left:4px;min-height:1.4em}.ar{margin:0 0 8px}
+.ah{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:baseline;width:100%;text-align:left;background:none;border:0;padding:6px 0;color:var(--txt)}
+.ah:disabled{cursor:default;color:var(--txt)}
+.ah:not(:disabled):hover{background:#0b1530}
+.kids{margin:8px 0 4px 14px;padding-left:12px;border-left:1px solid var(--line)}
+.big{font-size:26px;font-weight:600;color:var(--acc);margin:4px 0}
 .sec{font-size:15px;margin:18px 0 10px;color:var(--mut);font-weight:600}
 .mod{margin:0 0 26px}
 .mh{font-size:17px;margin:0 0 12px;padding-left:10px;border-left:4px solid var(--c)}
@@ -140,13 +145,13 @@ ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;b
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 const D={maths:'Maths',physique:'Physique',prog:'Prog',hum:'Humanités et Langues'};
-const V={home:'Accueil',cours:'Cours',exos:'Exos',annales:'Annales',depot:'Dépôt',admin:'Admin'};
+const V={home:'Accueil',cours:'Cours',exos:'Exos',annales:'Annales',depot:'Dépôt',compte:'Mon compte',admin:'Admin'};
 const LV=[
   {n:'Guidé',t:'Indications complètes, étape par étape.'},
   {n:'Intermédiaire',t:'Un seul indice, à demander.'},
   {n:'Examen',t:'Aucune aide.'}
 ];
-const S={y:null,user:null,role:'',pseudo:'',edit:false,loading:false,err:'',msg:'',ko:false,mode:'in',f:null,v:'home',d:'maths',lvl:0,ex:null,cf:false,var:0,gen:null,tab:0,topic:null,ch:null,big:false,N:null,pending:[],admin:false,photos:[],NR:{},RES:{},nst:'',nko:false,docId:null,pvId:null,pu:null,pe:'',corId:null,yr:'',busy:false,adm:{},cfd:null,cfp:null};
+const S={open:{},y:null,user:null,role:'',pseudo:'',edit:false,loading:false,err:'',msg:'',ko:false,mode:'in',f:null,v:'home',d:'maths',lvl:0,ex:null,cf:false,var:0,gen:null,tab:0,topic:null,ch:null,big:false,N:null,pending:[],admin:false,photos:[],NR:{},RES:{},nst:'',nko:false,docId:null,pvId:null,pu:null,pe:'',corId:null,yr:'',busy:false,adm:{},cfd:null,cfp:null};
 const ST={'':'Pas encore fait',ok:'Réussi',ko:'Raté'};
 const CHAPS={maths:[],physique:[],prog:[],hum:[]};
 const YN={1:'1ère année',2:'2ème année',3:'3ème année',4:'4ème année',5:'5ème année'};
@@ -162,7 +167,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','admin'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.pk=null;render();if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.pk=null;render();if(v==='compte'&&sb&&S.user)acctLoad();if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -273,6 +278,7 @@ const views={
     <p class="note">Statut actuel : ${ST[r.s||'']}</p>`;
   },
   partiel(){return S.d==='maths'?partielView():'<div class="empty">Pas encore disponible ici.</div>'},
+  compte(){return acctView()},
   annales(){return annHtml()},
   depot(){return depotHtml()},
   admin(){return S.role==='admin'?admHtml():`<h1>Admin</h1><div class="empty">Réservé aux administrateurs.</div>`}
@@ -559,6 +565,61 @@ const TL=(l,s)=>{try{return '\\('+l+'='+mtex(s)+'\\)'}catch(e){return esc(l)+' =
 const LM=s=>{try{return '\\(\\lim_{(x,y)\\to(0,0)}\; '+mtex(s)+'\\)'}catch(e){return 'lim '+pr(s)}};
 const II=s=>{try{return '\\(\\iint_D '+mtex(s)+'\\,dx\\,dy\\)'}catch(e){return '∬ '+pr(s)}};
 const IN=(a,b,f)=>{try{return '\\(I=\\int_{'+mtex(a)+'}^{'+mtex(b)+'} '+mtex(f)+'\\,dx\\)'}catch(e){return 'I = ∫ '+pr(f)}};
+
+/* ===== texte mathématique -> LaTeX : repère les formules dans les phrases (hints, consignes, corrections) ===== */
+const STOP=new Set('si et en ou un le la de du au ne se ce on il je tu ni ci me te les des une par pour sur que qui est pas ex mm cm pt'.split(' '));
+const SCH=/[∂∫∬∭√‖πθφρεα²³⁴₀₁₂′ᵘ∞±·×≤≥≠≈→∈½−=<>^_°̄ȳ]/;
+function mxKind(w){
+  const c=w.replace(/^[(\[{|]+/,'').replace(/[)\]}|.,;:?!]+$/,'');
+  if(!c)return 0;
+  if(/^[+\-*\/]$/.test(c)||SCH.test(c))return 2;
+  if(/^[A-Za-z]$/.test(c))return 2;
+  if(/^(sin|cos|tan|ln|exp|max|min)(\(|$)/.test(c))return 2;
+  if(/^[A-Za-z]{1,2}[(\[]/.test(c))return 2;
+  if(/\d/.test(c)&&/[()^_+*\/\-]/.test(c)&&/^[\w()^_+*\/.,\-]+$/.test(c))return 2;
+  if(/^[A-Za-z0-9]+(,[A-Za-z0-9]+)+$/.test(c))return 2;
+  if(/^\d+([.,]\d+)?$/.test(c))return 1;
+  if(/^[A-Za-z]{2}$/.test(c)&&!STOP.has(c.toLowerCase()))return 1;
+  return 0;
+}
+const MXT=[['≤','\\le '],['≥','\\ge '],['≠','\\ne '],['≈','\\approx '],['→','\\to '],['∈','\\in '],['∞','\\infty '],['π','\\pi '],['θ','\\theta '],['φ','\\varphi '],['ρ','\\rho '],['ε','\\varepsilon '],['α','\\alpha '],['∂','\\partial '],['∬','\\iint '],['∭','\\iiint '],['∫','\\int '],['·','\\cdot '],['×','\\times '],['−','-'],['′',"'"],['²','^2'],['³','^3'],['⁴','^4'],['₀','_0'],['₁','_1'],['₂','_2'],['ᵘ','^u'],['½','\\tfrac12 '],['±','\\pm '],['°','^\\circ '],['<','\\lt '],['>','\\gt ']];
+function mxTex(r){
+  r=r.replace(/[{}]/g,m=>'\\'+m).replace(/\b(sin|cos|tan|ln|exp|max|min)\b/g,'\\$1 ')
+   .replace(/‖/g,'\\Vert ').replace(/√\(([^()]*)\)/g,'\\sqrt{$1}').replace(/√([A-Za-z0-9.]+)/g,'\\sqrt{$1}')
+   .replace(/x̄/g,'\\bar{x} ').replace(/ȳ/g,'\\bar{y} ').replace(/\^\(([^()]*)\)/g,'^{$1}');
+  for(const[a,b]of MXT)r=r.split(a).join(b);
+  return '\\('+r.trim()+'\\)';
+}
+function mxPlain(s){
+  const tk=s.split(/ +/),n=tk.length;if(!s.trim())return s;
+  const m=tk.map(w=>mxKind(w)===2);const wk=tk.map(w=>mxKind(w)===1);
+  for(let i=1;i<n;i++)if(wk[i]&&!m[i]&&m[i-1])m[i]=true;
+  for(let i=n-2;i>=0;i--)if(wk[i]&&!m[i]&&m[i+1])m[i]=true;
+  for(let i=1;i<n-1;i++)if(tk[i]===':'&&m[i-1]&&m[i+1])m[i]=true;
+  const out=[];let i=0;
+  while(i<n){
+    if(!m[i]){out.push(tk[i]);i++;continue}
+    let j=i,run=[];
+    for(;j<n&&m[j];j++){run.push(tk[j]);if(tk[j]!==':'&&/[.;:?!]$/.test(tk[j])){j++;break}}
+    let rs=run.join(' '),tail='';const tm=/([.,;:?!]+)$/.exec(rs);
+    if(tm&&rs.length>tm[1].length){tail=tm[1];rs=rs.slice(0,-tail.length)}
+    const st=[];let ex=0;
+    for(let k=0;k<rs.length;k++){if(rs[k]==='(')st.push(k);else if(rs[k]===')'){if(st.length)st.pop();else ex++}}
+    let rest='';
+    if(st.length){const k=st[0];rest=(rs[k-1]===' '?' ':'')+rs.slice(k);rs=rs.slice(0,k).trim()}
+    else if(ex){let e=0;while(ex>0&&rs.endsWith(')')){rs=rs.slice(0,-1);e++;ex--}rest=')'.repeat(e)}
+    out.push((rs.trim()?mxTex(rs):'')+rest+tail);i=j;
+  }
+  return out.join(' ');
+}
+function mx(s){
+  s=String(s)
+   .replace(/∂²f\/∂x∂y/g,'\\(\\frac{\\partial^2 f}{\\partial x\\partial y}\\)')
+   .replace(/∂²f\/∂([xy])²/g,'\\(\\frac{\\partial^2 f}{\\partial $1^2}\\)')
+   .replace(/∂f\/∂([xy])/g,'\\(\\frac{\\partial f}{\\partial $1}\\)');
+  return s.split(/(\\\(.*?\\\))/).map((p,i)=>i%2?p:mxPlain(p)).join('');
+}
+const mxs=s=>{const[a,b]=String(s).split('§');return esc(mx(a))+(b===undefined?'':esc(b))};
 const ri=(r,a,b)=>a+Math.floor(r()*(b-a+1));
 const pickN=(r,n,k)=>{const a=[...Array(n).keys()];for(let i=n-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,k)};
 const fmt=v=>String(+v.toFixed(4));
@@ -655,14 +716,14 @@ const CALC={
      sol:[`${TL(PX,d.fx)}`,`${TL(PY,d.fy)}`]}})}}},
  differentielle:{n:'Gradient et plan tangent',g(r){
   const d=DT[pickN(r,DT.length,1)[0]](r),a=ri(r,1,2),b=ri(r,1,2),f=mparse(d.f,XY),fx=mparse(d.fx,XY),fy=mparse(d.fy,XY),P={x:a,y:b},f0=f(P),px=fx(P),py=fy(P);
-  return{titre:'Gradient et plan tangent',consigne:`On considère ${F(d.f)} et le point A = (${a}, ${b}). Les réponses numériques peuvent s'écrire avec e, ln, sqrt (ex : 2*e, ln(2), sqrt(5)) ou en décimal.`,
+  return{titre:'Gradient et plan tangent',consigne:`On considère ${F(d.f)} et le point A = (${a}, ${b}). §Les réponses numériques peuvent s'écrire avec e, ln, sqrt (ex : 2*e, ln(2), sqrt(5)) ou en décimal.`,
    items:[{raw:{d,a,b},q:`En A = (${a}, ${b}) :`,
     hints:["∂f/∂x(A) et ∂f/∂y(A) : calcule les dérivées partielles puis remplace x et y.","Plan tangent : z = f(a,b) + ∂f/∂x(a,b)·(x − a) + ∂f/∂y(a,b)·(y − b)."],
     fields:[{id:'x',t:'num',label:'∂f/∂x(A) =',ans:px},{id:'y',t:'num',label:'∂f/∂y(A) =',ans:py},
      {id:'z',t:'expr',vars:XY,label:'plan tangent z =',fn:v=>f0+px*(v.x-a)+py*(v.y-b)}],
     sol:[`${TL(PX,d.fx)} ; ${TL(PY,d.fy)}`,`f(A) ≈ ${fmt(f0)}, ∂f/∂x(A) ≈ ${fmt(px)}, ∂f/∂y(A) ≈ ${fmt(py)}`,`z ≈ ${fmt(f0)} + ${fmt(px)}(x − ${a}) + ${fmt(py)}(y − ${b})`]}]}}},
  limites:{n:'Limites en (0,0)',g(r){
-  return{titre:'Limites en (0,0)',consigne:"Détermine la limite en (0,0) de chaque fonction. Écris un nombre, ou « n'existe pas » s'il n'y a pas de limite.",
+  return{titre:'Limites en (0,0)',consigne:"Détermine la limite en (0,0) de chaque fonction. §Écris un nombre, ou « n'existe pas » s'il n'y a pas de limite.",
    items:pickN(r,LT.length,3).map(k=>{const d=LT[k](r);
     return{raw:d,q:`${LM(d.f)}`,hints:["Essaie les chemins y = 0, x = 0 puis y = x : si deux valeurs diffèrent, il n'y a pas de limite.","Si les chemins donnent la même valeur, passe en polaires (x = r·cosθ, y = r·sinθ) et majore par une fonction de r seul."],
      fields:[{id:'l',t:'lim',label:'limite =',ans:d.l}],sol:[d.l===null?"La limite n'existe pas.":'Limite = '+d.l,d.s]}})}}},
@@ -689,7 +750,7 @@ const CALC={
    kk=[1,2,Infinity][ri(r,0,2)],C=[ri(r,-2,2),ri(r,-2,2)],R=ri(r,2,4);
   let P;do{P=[C[0]+ri(r,-5,5),C[1]+ri(r,-5,5)]}while(false);
   const inb=nrm([P[0]-C[0],P[1]-C[1]],kk)<=R+1e-12,kn=kk===Infinity?'∞':kk;
-  return{titre:'Normes, distances et boules',consigne:'Les réponses exactes peuvent s\'écrire avec sqrt (ex : sqrt(13)).',items:[
+  return{titre:'Normes, distances et boules',consigne:'§Les réponses exactes peuvent s\'écrire avec sqrt (ex : sqrt(13)).',items:[
    {q:`u = (${u[0]}, ${u[1]})`,hints:["‖u‖₁ = |x| + |y| ; ‖u‖₂ = √(x² + y²) ; ‖u‖∞ = max(|x|, |y|)."],
     fields:[{id:'1',t:'num',label:'‖u‖₁ =',ans:nrm(u,1)},{id:'2',t:'num',label:'‖u‖₂ =',ans:nrm(u,2)},{id:'i',t:'num',label:'‖u‖∞ =',ans:nrm(u,3)}],
     sol:[`‖u‖₁ = ${nrm(u,1)}`,`‖u‖₂ = √${u[0]*u[0]+u[1]*u[1]} ≈ ${fmt(nrm(u,2))}`,`‖u‖∞ = ${nrm(u,3)}`]},
@@ -715,7 +776,7 @@ const CALC={
     return{q:`A = {(x,y) : ${d.s}}`,hints:["Ouvert : aucun point du bord n'est dans A. Fermé : A contient son bord (complémentaire ouvert).","Borné : A est contenu dans une boule."],
      fields:[{id:'o',t:'choice',label:'A ouvert ?',opts:OUI,ans:d.o?'oui':'non'},{id:'f',t:'choice',label:'A fermé ?',opts:OUI,ans:d.f?'oui':'non'},{id:'b',t:'choice',label:'A borné ?',opts:OUI,ans:d.b?'oui':'non'}],sol:[d.e]}})}}},
  chaine:{n:'Règle de la chaîne',g(r){
-  return{titre:'Règle de la chaîne',consigne:'Soit h(t) = f(x(t), y(t)). Calcule h′ au point indiqué (réponse exacte avec e, ln, sqrt, ou décimale).',
+  return{titre:'Règle de la chaîne',consigne:'Soit h(t) = f(x(t), y(t)). Calcule h′ au point indiqué §(réponse exacte avec e, ln, sqrt, ou décimale).',
    items:pickN(r,DT.length,2).map(k=>{const d=DT[k](r),c=CHN[ri(r,0,CHN.length-1)],fx=mparse(d.fx,XY),fy=mparse(d.fy,XY),X=mparse(c.x,['t']),Y=mparse(c.y,['t']),DX=mparse(c.dx,['t']),DY=mparse(c.dy,['t']),T={t:1},P={x:X(T),y:Y(T)},v=fx(P)*DX(T)+fy(P)*DY(T);
     return{raw:{d,c},q:`${F(d.f)}, ${TL('x(t)',c.x)}, ${TL('y(t)',c.y)}`,hints:["h′(t) = ∂f/∂x(x(t),y(t))·x′(t) + ∂f/∂y(x(t),y(t))·y′(t).","Calcule d'abord x(1), y(1), x′(1), y′(1), puis les dérivées partielles en (x(1), y(1))."],
      fields:[{id:'h',t:'num',label:'h′(1) =',ans:v}],
@@ -737,7 +798,7 @@ const dbl=(f,a,b,g1,g2)=>gl(x=>gl(y=>f(x,y),g1(x),g2(x)),a,b,20);
 const pol=(f,R,t0,t1)=>gl(t=>gl(r=>f(r*Math.cos(t),r*Math.sin(t))*r,0,R),t0,t1);
 const rd=v=>Math.abs(v)<1e-9?0:v;
 const one=(q,ex,hints,sol,label)=>({q,hints,fields:[{id:'v',t:'num',label:label||'valeur =',ans:mnum(ex),ex}],sol:[...sol,'Valeur exacte : '+TX(ex)]});
-const EXA="Donne les valeurs exactes avec pi, ln, e, sqrt (ex : pi/8, ln(2)/3, (e-1)/2) ou en décimal.";
+const EXA="§Donne les valeurs exactes avec pi, ln, e, sqrt (ex : pi/8, ln(2)/3, (e-1)/2) ou en décimal.";
 const F2=['x','y'];
 const IS=[
  r=>{const a=ri(r,2,3),n=ri(r,1,3);return{f:`x^${n}`,a:'0',b:String(a),ex:`${a}^${n+1}/${n+1}`}},
@@ -772,7 +833,7 @@ const PL=[
 const SECT=[['un disque entier','2*pi',0,2*Math.PI],['un demi-disque (y ≥ 0)','pi',0,Math.PI],['un quart de disque (x ≥ 0, y ≥ 0)','pi/2',0,Math.PI/2]];
 const AIRE=[
  r=>{const a=ri(r,2,5),b=ri(r,1,3);return{q:`l'intérieur de l'ellipse x²/${a*a} + y²/${b*b} ≤ 1`,ex:`pi*${a}*${b}`,h:"Change de variables x = a·r·cosθ, y = b·r·sinθ : le jacobien vaut a·b·r.",s:`Aire = π·a·b avec a = ${a}, b = ${b}.`}},
- r=>{const a=ri(r,1,3);return{q:`la cardioïde r(θ) = ${a}(1 + cosθ), θ ∈ [0, 2π[`,ex:`3*pi*${a}^2/2`,h:"Aire = ½ ∫ r(θ)² dθ en polaires.",s:`½ ∫₀^2π ${a}²(1 + cosθ)² dθ = 3π·${a}²/2.`}},
+ r=>{const a=ri(r,1,3);return{q:`la cardioïde r(θ) = ${a}(1 + cosθ), θ ∈ [0, 2π[`,ex:`3*pi*${a}^2/2`,h:"Aire = ½ ∫ r(θ)² dθ en polaires.",s:`½ ∫₀^(2π) ${a}²(1 + cosθ)² dθ = 3π·${a}²/2.`}},
  r=>{const a=ri(r,1,3);return{q:`la surface délimitée par la lemniscate r² = ${a*a}·cos(2θ) (rayons négatifs autorisés)`,ex:`${a*a}`,h:"Calcule un lobe (θ ∈ [−π/4, π/4]) avec ½ ∫ r² dθ, puis double.",s:`Un lobe vaut a²/2 ; les deux lobes : a² = ${a*a}.`}},
  r=>{const c=ri(r,2,5),n=[3,5,7][ri(r,0,2)];return{q:`la rosace r = ${c}·sin(${n}θ), θ ∈ [0, π] (rayons négatifs autorisés)`,ex:`pi*${c*c}/4`,h:"Aire = ½ ∫₀^π r² dθ, avec sin² = (1 − cos 2·)/2.",s:`½ ∫₀^π ${c*c} sin²(${n}θ) dθ = π·${c*c}/4.`}},
  r=>{const D=[6,8,10][ri(r,0,2)],al=[45,55,60,90][ri(r,0,3)];return{q:`PacMan : un disque de diamètre ${D} mm dont la bouche forme un angle de ${al}°`,ex:`pi*${(D/2)**2}*(360-${al})/360`,h:"Aire du secteur : ∫ dθ sur 2π − (angle de la bouche) fois R²/2.",s:`Aire = (R²/2)·(2π − angle en rad) avec R = ${D/2} mm.`}}
@@ -843,17 +904,17 @@ function cxFieldHtml(f,id,st,show){
   const inp=f.t==='choice'
     ?`<select onchange="cxSet('${st.w}','${id}',this.value)" aria-label="${esc(f.label)}"><option value="">—</option>${f.opts.map(o=>`<option value="${esc(o)}"${v===o?' selected':''}>${esc(o)}</option>`).join('')}</select>`
     :`<input type="text" value="${esc(v)}" oninput="cxSet('${st.w}','${id}',this.value)" placeholder="${f.t==='lim'?'nombre ou « n\'existe pas »':f.t==='expr'?'expression':'nombre'}" aria-label="${esc(f.label)}" autocomplete="off" spellcheck="false"><span class="pvx" id="pv_${id}" data-w="${st.w}" data-id="${id}"></span>`;
-  return `<div class="cxf ${cls}"><label>${esc(f.label).replace('∂f/∂x','\\(\\frac{\\partial f}{\\partial x}\\)').replace('∂f/∂y','\\(\\frac{\\partial f}{\\partial y}\\)')}</label>${inp}${res?(res.ok?'<span class="fok"> ✓ juste</span>':`<span class="fko"> ✗ ${esc(res.m||'faux')}</span>`):''}</div>`;
+  return `<div class="cxf ${cls}"><label>${esc(mx(f.label))}</label>${inp}${res?(res.ok?'<span class="fok"> ✓ juste</span>':`<span class="fko"> ✗ ${esc(res.m||'faux')}</span>`):''}</div>`;
 }
 function cxItemHtml(it,i,pre,st,o){
   const ids=it.fields.map(f=>pre+i+'_'+f.id),shown=o.show;
-  const hints=o.lvl===0?`<ul class="note">${it.hints.map(h=>`<li>${esc(h)}</li>`).join('')}</ul>`
-    :o.lvl===1?`<details><summary>Afficher l'indice</summary>${esc(it.hints[0])}</details>`:'';
-  return `<div class="cxi"><p class="mq">${it.q}</p>
+  const hints=o.lvl===0?`<ul class="note">${it.hints.map(h=>`<li>${esc(mx(h))}</li>`).join('')}</ul>`
+    :o.lvl===1?`<details><summary>Afficher l'indice</summary>${esc(mx(it.hints[0]))}</details>`:'';
+  return `<div class="cxi"><p class="mq">${mx(it.q)}</p>
    ${it.fields.map((f,j)=>cxFieldHtml(f,ids[j],st,shown)).join('')}
    ${o.train?`<div class="row" style="margin:6px 0 0"><button class="btn" onclick="cxCheck('${st.w}','${pre}',${i})">Vérifier</button></div>`:''}
    ${o.noHints?'':hints}
-   ${o.sol?`<details><summary>Voir la correction</summary>${it.sol.map(s=>`<p style="margin:4px 0">${s}</p>`).join('')}</details>`:''}</div>`;
+   ${o.sol?`<details><summary>Voir la correction</summary>${it.sol.map(s=>`<p style="margin:4px 0">${mx(s)}</p>`).join('')}</details>`:''}</div>`;
 }
 function cxGrade(it,i,pre,st){
   let ok=0;for(const f of it.fields){const id=pre+i+'_'+f.id,r=chkField(f,st.ans[id]);st.res[id]=r;if(r.ok)ok++}
@@ -867,7 +928,7 @@ function ensureCx(kind){
 function calcView(kind,quiet){
   ensureCx(kind);const st=S.cx,E=st.E,all=E.items.every((it,i)=>it.fields.every(f=>(st.res[i+'_'+f.id]||st.res['' +i+'_'+f.id]||{}).ok));
   const items=E.items.map((it,i)=>{const o={train:1,lvl:S.lvl,sol:1,show:(st.shown||{})[''+i]};return cxItemHtml(it,i,'',st,o)}).join('');
-  return `<section class="panel"><h3>${esc(E.titre)}</h3><p>${esc(E.consigne)}</p>${items}
+  return `<section class="panel"><h3>${esc(E.titre)}</h3><p>${mxs(E.consigne)}</p>${items}
    ${all&&!quiet?'<p class="good" style="margin-top:12px">Tout est juste : tu peux marquer l\'exercice comme réussi.</p>':''}
    <div class="row" style="margin-top:12px"><button class="btn" onclick="S.var++;S.cx=null;render()">Nouveau tirage</button></div></section>`;
 }
@@ -926,7 +987,7 @@ function partielView(){
     const body=P.secs.map((x,si)=>{
       const d=P.done&&P.det?P.det[si]:null;
       return `<section class="panel" style="margin-top:14px"><h3>${esc(x.sc.n)} (${x.sc.pts} pts)${d&&d.tot?` : ${f1(d.got)} / ${x.sc.pts}`:''}</h3>`+
-       (x.exs.length?x.exs.map((e,ei)=>`<p class="note" style="margin:10px 0 0">${esc(e.E.titre)} : ${esc(e.E.consigne)}</p>`+
+       (x.exs.length?x.exs.map((e,ei)=>`<p class="note" style="margin:10px 0 0">${esc(e.E.titre)} : ${mxs(e.E.consigne)}</p>`+
          e.E.items.map((it,i)=>cxItemHtml(it,i,si+'.'+ei+'.',P,{train:0,lvl:3,noHints:1,sol:P.done,show:P.done})).join('')).join('')
         :'<div class="empty">Les exercices du chapitre 2 arrivent bientôt : ces points ne sont pas comptés pour l\'instant.</div>')+`</section>`}).join('');
     if(P.done)return `<h1>Résultat du partiel blanc</h1>
@@ -951,6 +1012,62 @@ function partielView(){
     ${PT_SECS.map(sc=>`<div class="adm"><b>${esc(sc.n)}</b> <span class="note">(${sc.pts} pts)</span><div class="row" style="margin:8px 0 0">${sc.gens.length?sc.gens.map(g=>`<button class="btn" onclick="ptTrain('${g}')">${esc(CALC[g].n)}</button>`).join(''):'<span class="note">Bientôt.</span>'}</div></div>`).join('')}</section>`;
 }
 
+
+/* ===== Mon compte : profil et progression (domaine > module > chapitre > type d'exercice) ===== */
+const agg=ts=>{let ok=0,ko=0,n=0;for(const t of ts){const R=S.RES[t.id]||{},nb=t.nb_exercices||0;n+=nb;for(let i=1;i<=nb;i++){const r=R[i];if(r&&r.s==='ok')ok++;else if(r&&r.s==='ko')ko++}}return{ok,ko,n}};
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+const MLAB=m=>`A${m.an} · Module ${m.num}${m.raw?' – '+esc(m.raw):''}`;
+function tg(k){S.open[k]=!S.open[k];render()}
+function aRow(key,label,a,kids,body){
+  const open=!!S.open[key],p=pct(a.ok,a.n),t=a.ok+a.ko;
+  return `<div class="ar"><button class="ah"${kids?` onclick="tg('${key}')" aria-expanded="${open}"`:' disabled'}><span>${kids?(open?'▾ ':'▸ '):'· '}${label}</span><span class="note" style="margin:0">${t?pct(a.ok,t)+' % de réussite':'—'}</span><b>${a.ok} / ${a.n} · ${p} %</b></button><div class="bar"><i style="width:${p}%"></i></div>${kids&&open?`<div class="kids">${body}</div>`:''}</div>`;
+}
+function acctTree(){
+  return Object.keys(D).map(k=>{
+    const chs=CHAPS[k],chRow=c=>aRow('c:'+c.id,c.n,agg(c.ty),c.ty.length>0,c.ty.map(t=>aRow('t:'+t.id,esc(t.titre),agg([t]),false,'')).join(''));
+    const mods=MODS.filter(m=>m.matiere===k).sort((a,b)=>a.an-b.an||a.num-b.num),orph=chs.filter(c=>!c.mid);
+    const mb=mods.map(m=>{const cs=chs.filter(c=>c.mid===m.id);return aRow('m:'+m.id,MLAB(m),agg(cs.flatMap(c=>c.ty)),cs.length>0,cs.map(chRow).join(''))});
+    if(orph.length)mb.push(aRow('m:o'+k,'A2 · Autres chapitres',agg(orph.flatMap(c=>c.ty)),true,orph.map(chRow).join('')));
+    return `<div class="d-${k}" style="--acc:var(--c);margin-bottom:10px">${aRow('d:'+k,`<b>${D[k]}</b>`,agg(chs.flatMap(c=>c.ty)),mb.length>0,mb.join(''))}</div>`;
+  }).join('');
+}
+async function acctLoad(){
+  try{const r=await sb.from('partiels').select('created_at,note,max').order('created_at',{ascending:false}).limit(100);
+    S.ptAll=r.error?null:(r.data||[]);if(S.v==='compte')render()}catch(e){S.ptAll=null}
+}
+async function savePseudo(){
+  const v=$('acp').value.trim();if(v.length<2||v.length>30)return flash('Pseudo : 2 à 30 caractères.',1);
+  const r=await sb.from('profiles').update({pseudo:v}).eq('id',S.user.id).select();
+  if(refused(r))return flash(refused(r),1);
+  S.pseudo=v;flash('Pseudo enregistré.');
+}
+async function savePwd(){
+  const v=$('acw').value;if(v.length<8)return flash('Mot de passe : 8 caractères minimum.',1);
+  const r=await sb.auth.updateUser({password:v});
+  if(r.error)return flash(fr(r.error.message),1);
+  flash('Mot de passe modifié.');
+}
+function acctView(){
+  const all=agg(Object.values(CHAPS).flat().flatMap(c=>c.ty)),tried=all.ok+all.ko,PT=(S.ptAll||[]).filter(x=>x.max>0),
+    avg=PT.length?PT.reduce((s,x)=>s+x.note/x.max*20,0)/PT.length:null,rate=pct(all.ok,tried);
+  return `<h1>Mon compte</h1>
+  <div class="cards" style="margin-bottom:14px">
+    <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Moyenne générale</p><div class="big">${tried?rate+' %':'—'}</div><p style="margin:0">${tried?`réussite sur les exos tentés, soit ${f1(rate/5)} / 20`:'Aucun exercice tenté pour le moment.'}</p></div>
+    <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Avancement</p><div class="big">${all.ok} / ${all.n}</div><div class="bar"><i style="width:${pct(all.ok,all.n)}%"></i></div><p style="margin:6px 0 0">exercices réussis (${pct(all.ok,all.n)} %), ${all.ko} ratés</p></div>
+    <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Partiels blancs</p><div class="big">${avg===null?'—':f1(avg)+' / 20'}</div><p style="margin:0">${avg===null?'Aucun partiel blanc rendu.':'moyenne de '+PT.length+' essai'+(PT.length>1?'s':'')}</p></div>
+  </div>
+  <section class="panel"><h3>Mes scores d'exercices</h3>
+    <p class="note" style="margin:0 0 10px">Clique sur un domaine pour voir ses modules, puis ses chapitres et ses types d'exercices.</p>${acctTree()}</section>
+  ${PT.length?`<section class="panel" style="margin-top:14px"><h3>Historique des partiels blancs</h3><ul class="q">${PT.map(x=>`<li><span>${new Date(x.created_at).toLocaleDateString('fr-FR')}</span><span class="badge">${f1(x.note)} / ${x.max}</span></li>`).join('')}</ul></section>`:''}
+  <section class="panel" style="margin-top:14px"><h3>Paramètres du compte</h3>
+    <div class="plan" style="max-width:380px">
+      <div class="note" style="margin:0">E-mail : ${esc(S.user.email||'')} · rôle : ${S.role==='admin'?'admin':'membre'}</div>
+      <input type="text" id="acp" value="${esc(S.pseudo)}" maxlength="30" aria-label="Pseudo">
+      <div class="row" style="margin:0"><button class="btn" onclick="savePseudo()">Changer le pseudo</button></div>
+      <input type="password" id="acw" placeholder="Nouveau mot de passe (8 caractères min.)" autocomplete="new-password" aria-label="Nouveau mot de passe">
+      <div class="row" style="margin:0"><button class="btn" onclick="savePwd()">Changer le mot de passe</button><button class="btn" onclick="logout()">Se déconnecter</button></div>
+    </div></section>`;
+}
 const tid=()=>CHAP().ty[S.topic].id;
 function getR(){return S.RES[tid()]||{}}
 async function setR(n,k){
@@ -984,10 +1101,10 @@ function render(){
   app.className='d-'+S.d;
   const inD=['dom','chap','cours','exos','annales','partiel'].includes(S.v),inC=['chap','cours','exos','annales'].includes(S.v);
   app.dataset.k=S.v==='cours'?'cours':(S.v==='exos'||S.v==='partiel')?'exos':(S.v==='dom'||S.v==='chap')?'dom':'other';
-  $('path').textContent=['depot','admin'].includes(S.v)?'~/'+S.v+'$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+'$';
+  $('path').textContent=['depot','compte','admin'].includes(S.v)?'~/'+S.v+'$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+'$';
   $('nav').innerHTML=S.user?`<button class="${S.v==='home'?'on':''}" onclick="go('home')">Accueil${S.y!==null?' · '+YN[S.y]:''}</button>`
     +(S.y===null?[]:Object.keys(D)).map(k=>`<button class="dn d-${k}${inD&&S.d===k?' on':''}" onclick="go('dom','${k}')">${D[k]}</button>`).join('')
-    +['depot','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}</button>`).join(''):'';
+    +['depot','compte','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}</button>`).join(''):'';
   $('who').innerHTML=S.user?`<div>${esc(S.pseudo)} (${S.role==='admin'?'admin':'membre'})</div>`
     +(S.role==='admin'?`<button class="btn" aria-pressed="${S.edit}" onclick="S.edit=!S.edit;render()">Mode édition : ${S.edit?'oui':'non'}</button>`:'')
     +`<button class="btn" onclick="logout()">Se déconnecter</button>`:'';
