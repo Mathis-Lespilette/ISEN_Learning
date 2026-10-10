@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RévisionOS – CIR2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070d1c;--panel:#0b1530;--line:#182a52;--txt:#c9d6f2;--mut:#6f82ad;
+  color-scheme:dark;box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.6 'JetBrains Mono',ui-monospace,Consolas,Menlo,monospace}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc,#3b6fd4);outline-offset:2px}
+
+/* palettes : --c = cours (plus sourd), --e = exos (plus vif) */
+.d-maths{--c:#a63a4a;--e:#e0566b}
+.d-physique{--c:#2f5fb8;--e:#4f8ff0}
+.d-prog{--c:#2f8a4e;--e:#4fcf79}
+.d-hum{--c:#7a45b5;--e:#a974e8}
+#app[data-k=cours]{--acc:var(--c)}
+#app[data-k=exos]{--acc:var(--e)}
+#app[data-k=other]{--acc:#3b6fd4}
+#app[data-k=dom]{--acc:var(--c)}
+.nav .dn{border-left-color:var(--c)}
+.who{margin-top:22px;font-size:12px;color:var(--mut)}
+.who .btn{display:block;width:100%;margin-top:8px;font-size:12px}
+
+#app{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+aside.side{border-right:1px solid var(--line);padding:18px 14px;background:#050a16;position:sticky;top:0;align-self:start;height:100vh}
+.logo{font-weight:600;color:var(--acc);margin-bottom:22px}
+.logo small{display:block;color:var(--mut);font-weight:400}
+.nav button{display:block;width:100%;text-align:left;background:none;border:0;border-left:2px solid transparent;padding:7px 10px;color:var(--mut)}
+.nav button:hover{color:var(--txt)}
+.nav button.on{color:var(--txt);border-left-color:var(--acc);background:#0b1530}
+main{padding:20px 26px 40px;min-width:0}
+.prompt{margin:0 0 10px;text-align:right;font-size:11px;color:var(--mut);opacity:.7;word-break:break-all}
+h1{font-size:20px;margin:0 0 6px}
+.lead{color:var(--mut);margin:0 0 18px;max-width:70ch}
+
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.tab{background:var(--panel);border:1px solid var(--line);border-bottom:3px solid var(--c);padding:6px 12px;color:var(--mut)}
+.tab.on{color:var(--txt);background:#10204a}
+.panel{background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--acc);padding:14px;min-width:0}
+.panel h3{margin:0 0 10px;font-size:13px;color:var(--acc);font-weight:600}
+.empty{color:var(--mut);border:1px dashed var(--line);padding:16px;text-align:center}
+.grid3{display:grid;grid-template-columns:190px 1fr 440px;gap:14px}
+.grid3.wide{grid-template-columns:190px 1fr}
+.wide .notes{grid-column:1/-1}
+.bar{height:8px;background:#050a16;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--acc)}
+.lnk{background:none;border:0;color:var(--txt);text-decoration:underline;padding:0;text-align:left}
+.badge{font-size:12px;padding:2px 8px;border:1px solid var(--line);color:var(--mut)}
+.badge.ok{border-color:#4fcf79;color:#4fcf79}.badge.ko{border-color:#e0566b;color:#e0566b}
+.gen{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.plan{display:flex;flex-direction:column;gap:8px}
+.plan canvas{width:100%;max-width:260px;height:auto;border:1px solid var(--line);margin:0}
+.plan input{width:100%}
+.good{color:#4fcf79;margin:0}.bad{color:#e0566b;margin:0}
+code{background:#050a16;border:1px solid var(--line);padding:1px 5px}
+.topic{text-align:left;color:inherit;font:inherit;cursor:pointer;border-left-color:var(--e)}
+.topic.chap{border-left-color:var(--c)}
+.topic:hover{background:#10204a}
+.grid2{display:grid;grid-template-columns:260px 1fr;gap:14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c);padding:14px}
+.card h2{margin:0 0 4px;font-size:16px}
+.card p{margin:0 0 12px;color:var(--mut)}
+.btn{background:none;border:1px solid var(--acc,#3b6fd4);color:var(--txt);padding:6px 12px}
+.btn:hover{background:#10204a}
+.btn:disabled{opacity:.4;cursor:default}
+.card .btn.c{border-color:var(--c)}.card .btn.e{border-color:var(--e)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+select,input[type=password],input[type=text],input[type=email]{background:#050a16;border:1px solid var(--line);padding:6px 8px}
+textarea{width:100%;min-height:160px;background:#050a16;border:1px solid var(--line);padding:8px;resize:vertical}
+canvas{width:100%;background:#050a16;border:1px solid var(--line);touch-action:none;margin-top:8px;display:block;max-width:900px;height:auto}
+.preview{min-height:320px;display:flex;align-items:center;justify-content:center}
+.lvl{background:var(--panel);border:1px solid var(--line);padding:6px 12px;color:var(--mut)}
+.lvl.on{border-color:var(--acc);color:var(--txt)}
+details{border:1px solid var(--line);padding:8px 12px;margin-top:10px;background:#050a16}
+summary{cursor:pointer;color:var(--acc)}
+ul.q{list-style:none;margin:0;padding:0}
+ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:8px 0;flex-wrap:wrap}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.thumbs img{height:90px;border:1px solid var(--line)}
+.pv{width:100%;height:520px;border:1px solid var(--line);background:#fff;display:block}
+.pvi{max-width:100%;border:1px solid var(--line);display:block}
+.lnk.on{color:var(--acc);font-weight:600}
+.adm{border-bottom:1px solid var(--line);padding:12px 0}
+.adm input[type=number]{width:90px;background:#050a16;border:1px solid var(--line);padding:6px 8px}
+.note{color:var(--mut);font-size:12px;margin-top:14px}
+
+@media (max-width:900px){
+  #app{grid-template-columns:1fr}
+  aside.side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:12px}
+  .logo{margin-bottom:8px}
+  .nav{display:flex;overflow-x:auto}
+  .nav button{width:auto;white-space:nowrap;border-left:0;border-bottom:2px solid transparent}
+  .nav button.on{border-bottom-color:var(--acc)}
+  .grid3,.grid3.wide,.grid2{grid-template-columns:1fr}
+  main{padding:16px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="side">
+    <div class="logo">RévisionOS<small>CIR2 – ISEN Lille</small></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="who" id="who"></div>
+  </aside>
+  <main>
+    <p class="prompt" id="path"></p>
+    <div id="view"></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const D={maths:'Maths',physique:'Physique',prog:'Prog',hum:'Humanités et Langues'};
+const V={home:'Accueil',cours:'Cours',exos:'Exos',annales:'Annales',depot:'Dépôt',admin:'Admin'};
+const LV=[
+  {n:'Guidé',t:'Indications complètes, étape par étape.'},
+  {n:'Intermédiaire',t:'Un seul indice, à demander.'},
+  {n:'Examen',t:'Aucune aide.'}
+];
+const S={user:null,role:'',pseudo:'',edit:false,loading:false,err:'',msg:'',ko:false,mode:'in',f:null,v:'home',d:'maths',lvl:0,ex:null,cf:false,var:0,gen:null,tab:0,topic:null,ch:null,big:false,N:null,pending:[],admin:false,photos:[],NR:{},RES:{},nst:'',nko:false,docId:null,pvId:null,pu:null,pe:'',corId:null,yr:'',busy:false,adm:{},cfd:null,cfp:null};
+const ST={'':'Pas encore fait',ok:'Réussi',ko:'Raté'};
+const CHAPS={maths:[],physique:[],prog:[],hum:[]};
+const CHAP=()=>CHAPS[S.d][S.ch],nk=()=>S.user.id+':'+CHAP().id;
+const NX=()=>CHAP().ty[S.topic].nb_exercices,rk=()=>'r:'+S.user.id+':'+CHAP().ty[S.topic].id;
+const slug=t=>t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const ls={
+  get(k){try{return localStorage.getItem(k)||''}catch(e){return ''}},
+  set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','admin'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;render()}
+function tabs(){
+  return '<div class="tabs">'+Object.keys(D).map(k=>
+    `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
+}
+
+const views={
+  login(){
+    const up=S.mode==='up',f=S.f||{};
+    return `<h1>${up?'Créer un compte':'Connexion'}</h1>
+    <p class="lead">${up?"Inscription réservée à la promo : adresse de l'école (@student.junia.com) et code d'invitation.":'Connecte-toi pour accéder aux cours de la promo.'}</p>
+    <section class="panel" style="max-width:380px"><div class="plan" onkeydown="if(event.key==='Enter')login()">
+      <input type="email" id="le" value="${esc(f.e||'')}" placeholder="E-mail" autocomplete="username" aria-label="E-mail">
+      <input type="password" id="lp" placeholder="Mot de passe" autocomplete="${up?'new-password':'current-password'}" aria-label="Mot de passe">
+      ${up?`<input type="text" id="lu" value="${esc(f.u||'')}" placeholder="Pseudo" aria-label="Pseudo">
+      <input type="text" id="lc" value="${esc(f.c||'')}" placeholder="Code d'invitation" aria-label="Code d'invitation">`:''}
+      <div class="row" style="margin:0"><button class="btn" onclick="login()">${up?"S'inscrire":'Se connecter'}</button>
+      <button class="btn" onclick="S.mode='${up?'in':'up'}';S.msg='';render()">${up?"J'ai déjà un compte":'Créer un compte'}</button></div>
+    </div></section>`;
+  },
+  home(){
+    return `<h1>Révisions CIR2</h1>
+    ${introHtml()}
+    <div class="cards">`+Object.keys(D).map(k=>{const n=CHAPS[k].length;return `
+      <button class="card topic chap d-${k}" onclick="go('dom','${k}')"><h2>${D[k]}</h2>
+      <p>${n?n+' chapitre'+(n>1?'s':''):'Aucun chapitre pour le moment'}</p></button>`}).join('')+'</div>';
+  },
+  dom(){
+    const cs=CHAPS[S.d];
+    return `<h1>${D[S.d]}</h1>
+    <p class="lead">Choisis un chapitre pour accéder à son cours, ses exos et ses annales.</p>${addChapHtml()}`+
+    (cs.length?'<div class="cards">'+cs.map((c,i)=>`<button class="card topic chap" onclick="S.ch=${i};go('chap')"><h2>${c.n}</h2><p>Cours, exos et annales.</p></button>`).join('')+'</div>'
+    :`<div class="empty">Aucun chapitre dans ${D[S.d]} pour le moment.</div>`);
+  },
+  chap(){
+    const c=CHAP();
+    return `<div class="row"><button class="btn" onclick="go('dom')">‹ ${D[S.d]}</button></div>
+    ${chapHead(c)}
+    <div class="cards">
+      <button class="card topic chap" onclick="go('cours')"><h2>Cours</h2><p>Documents et notes.</p></button>
+      <button class="card topic" onclick="go('exos')"><h2>Exos</h2><p>Exercices types, du guidé à l'examen.</p></button>
+      <button class="card topic" style="border-left-color:#3b6fd4" onclick="go('annales')"><h2>Annales</h2><p>Sujets avec ou sans correction.</p></button>
+    </div>`;
+  },
+  cours(){
+    return `<div class="row"><button class="btn" onclick="go('chap')">‹ ${CHAP().n}</button></div>
+    <h1>Cours – ${CHAP().n}</h1>
+    <p class="lead">Ouvre un document pour le consulter avant de le télécharger, et note tes remarques à côté.</p>
+    <div class="grid3${S.big?' wide':''}">
+      ${coursPanels()}
+      <section class="panel notes"><h3>Mes notes</h3>
+        <div class="row"><button class="btn" onclick="pg(-1)" aria-label="Page précédente">‹</button><span id="pn"></span>
+        <button class="btn" onclick="pg(1)" aria-label="Page suivante">›</button>
+        <button class="btn" onclick="addPg()">Nouvelle page</button>
+        <button class="btn" onclick="delPg()">Supprimer la page</button>
+        <button class="btn" onclick="S.big=!S.big;render()">${S.big?'Réduire':'Agrandir'}</button>
+        <span id="ns" class="note" role="status" style="margin:0"></span></div>
+        <textarea id="nt" placeholder="Écris tes commentaires sur ce cours…"></textarea>
+        <canvas id="cv" width="900" height="1200"></canvas>
+        <div class="row" style="margin:8px 0 0"><button class="btn" onclick="clearCv()">Effacer le dessin</button></div>
+        <p class="note">Tes notes sont enregistrées dans ton compte (toi seul les vois) et te suivent d'un appareil à l'autre.</p></section>
+    </div>`;
+  },
+  exos(){
+    if(S.topic===null)return topicList();
+    const tp=CHAP().t[S.topic],R=getR();
+    if(!NX())return `<div class="row"><button class="btn" onclick="S.topic=null;render()">Changer de type</button></div><h1>Exos – ${CHAP().n} : ${tp}</h1><div class="empty">Aucun exercice dans ce type pour le moment.</div>`;
+    if(S.ex===null){
+      const ids=[...Array(NX()).keys()].map(i=>i+1);
+      const c=k=>ids.filter(i=>(R[i]||{}).s===k).length;
+      const ok=c('ok'),ko=c('ko'),nd=NX()-ok-ko,pct=Math.round(ok/Math.max(1,NX())*100);
+      return `<div class="row"><button class="btn" onclick="S.topic=null;render()">Changer de type</button></div>
+      <h1>Exos – ${CHAP().n} : ${tp}</h1>
+      <p class="lead">Choisis un exercice dans la liste, ou laisse le hasard décider.</p>
+      <section class="panel"><h3>Score : ${ok} / ${NX()} réussis (${pct} %)</h3>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+        <p class="note" style="margin:8px 0 12px">${ok} réussi${ok>1?'s':''}, ${ko} raté${ko>1?'s':''}, ${nd} pas encore fait${nd>1?'s':''}</p>
+        <div class="row"><button class="btn" onclick="rnd()">Exercice au hasard</button>
+        <button class="btn" onclick="resetR()">${S.cf?'Confirmer la remise à zéro':'Remettre à zéro'}</button></div>
+        <ul class="q">${ids.map(i=>{const r=R[i]||{};return `<li><button class="lnk" onclick="S.ex=${i};render()">Exercice ${i}</button>
+          <span class="badge ${r.s||'nd'}">${ST[r.s||'']}${r.s?' – '+LV[r.l].n:''}</span></li>`}).join('')}</ul></section>`;
+    }
+    const l=LV[S.lvl],r=R[S.ex]||{},gen=CHAP().ty[S.topic].generateur==='domaines-plan';
+    if(gen)ensureGen();
+    const aide=S.lvl===0?'<ul><li>Indication 1 : à venir</li><li>Indication 2 : à venir</li><li>Indication 3 : à venir</li></ul>'
+      :S.lvl===1?'<details><summary>Afficher l\'indice</summary>Indice : à venir</details>'
+      :'<p class="note">Aucune aide à ce niveau.</p>';
+    return `<div class="row"><button class="btn" onclick="S.ex=null;render()">Retour à la liste</button></div>
+    <h1>Exo ${S.ex} – ${tp}</h1>
+    <div class="row">${LV.map((x,i)=>`<button class="lvl${i===S.lvl?' on':''}" onclick="S.lvl=${i};render()">${x.n}</button>`).join('')}</div>
+    <p class="note" style="margin:0 0 12px">${l.t}</p>
+    ${gen?genView(l):`<section class="panel"><h3>Exercice ${S.ex} – ${l.n}</h3>
+      <p>Énoncé à venir : cet exercice « ${tp} » n'est pas encore rédigé.</p>${aide}
+      <details><summary>Voir la correction</summary>Correction à venir.</details></section>`}
+    <div class="row" style="margin-top:12px"><span>Mon résultat :</span>
+      <button class="btn" onclick="setR(${S.ex},'ok')">Réussi</button>
+      <button class="btn" onclick="setR(${S.ex},'ko')">Raté</button></div>
+    <p class="note">Statut actuel : ${ST[r.s||'']}</p>`;
+  },
+  annales(){return annHtml()},
+  depot(){return depotHtml()},
+  admin(){return S.role==='admin'?admHtml():`<h1>Admin</h1><div class="empty">Réservé aux administrateurs.</div>`}
+};
+
+/* notes : texte en base, dessin en image dans le stockage privé */
+const TM={};
+function later(k,fn,ms){if(TM[k])clearTimeout(TM[k].id);TM[k]={fn,id:setTimeout(()=>{delete TM[k];fn()},ms)}}
+async function flushNotes(){await Promise.all(Object.keys(TM).map(k=>{clearTimeout(TM[k].id);const f=TM[k].fn;delete TM[k];return f()}))}
+function setNs(t,ko){S.nst=t||'';S.nko=!!ko;const e=$('ns');if(e){e.textContent=S.nst;e.className=ko?'bad':'note'}}
+function d2b(u){const b=atob(u.split(',')[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new Blob([a],{type:'image/png'})}
+function b2d(b){return new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=ko;r.readAsDataURL(b)})}
+async function sendNote(chap,p){
+  if(p.gone)return;
+  setNs('Enregistrement…');
+  const r=await sb.from('notes').upsert({user_id:S.user.id,chapitre_id:chap,page:p.n,texte:p.t,dessin_path:p.path||null},{onConflict:'user_id,chapitre_id,page'}).select();
+  if(refused(r))return setNs('Erreur : '+refused(r),1);
+  setNs('Enregistré');
+}
+async function saveDraw(chap,p){
+  const old=p.path;
+  if(p.gone||(!p.c&&!old))return;
+  setNs('Enregistrement…');
+  try{
+    if(p.c){
+      const path=S.user.id+'/notes/'+chap+'-'+p.n+'-'+Date.now()+'.png';
+      const u=await sb.storage.from('perso').upload(path,d2b(p.c),{contentType:'image/png',upsert:false});
+      if(u.error)throw u.error;
+      p.path=path;
+    }else p.path=null;
+    await sendNote(chap,p);
+    if(old&&old!==p.path)await sb.storage.from('perso').remove([old]);
+  }catch(e){setNs('Erreur : '+fr(e.message||String(e)),1)}
+}
+function qDraw(chap,p){setNs('Modifications non enregistrées…');later('d'+chap+':'+p.n,()=>{p.q=(p.q||Promise.resolve()).then(()=>saveDraw(chap,p));return p.q},1200)}
+async function loadMine(){
+  const [n,r]=await Promise.all([
+    sb.from('notes').select('chapitre_id,page,texte,dessin_path').eq('user_id',S.user.id).order('page'),
+    sb.from('resultats').select('type_id,numero,statut,niveau').eq('user_id',S.user.id)]);
+  if(n.error)throw n.error;if(r.error)throw r.error;
+  S.NR={};S.N=null;S.RES={};
+  (n.data||[]).forEach(x=>{(S.NR[x.chapitre_id]=S.NR[x.chapitre_id]||[]).push({n:x.page,t:x.texte||'',path:x.dessin_path,c:x.dessin_path?undefined:''})});
+  (r.data||[]).forEach(x=>{(S.RES[x.type_id]=S.RES[x.type_id]||{})[x.numero]={s:x.statut==='reussi'?'ok':'ko',l:x.niveau}});
+}
+function getN(){
+  const id=CHAP().id;
+  if(!S.N||S.N.d!==id){
+    if(!S.NR[id]||!S.NR[id].length)S.NR[id]=[{n:1,t:'',path:null,c:''}];
+    S.N={d:id,p:S.NR[id],i:0};
+  }
+  return S.N;
+}
+function pg(k){const N=getN();N.i=Math.max(0,Math.min(N.p.length-1,N.i+k));render()}
+function addPg(){const N=getN();N.p.push({n:Math.max(...N.p.map(x=>x.n))+1,t:'',path:null,c:''});N.i=N.p.length-1;render()}
+async function delPg(){
+  const N=getN(),p=N.p[N.i],chap=CHAP().id;p.gone=true;
+  ['t','d'].forEach(k=>{const m=k+chap+':'+p.n;if(TM[m]){clearTimeout(TM[m].id);delete TM[m]}});
+  if(N.p.length>1)N.p.splice(N.i,1);else N.p[0]={n:1,t:'',path:null,c:''};
+  N.i=Math.min(N.i,N.p.length-1);render();
+  const r=await sb.from('notes').delete().eq('user_id',S.user.id).eq('chapitre_id',chap).eq('page',p.n);
+  if(r.error)return flash(fr(r.error.message),1);
+  if(p.path)await sb.storage.from('perso').remove([p.path]);
+}
+function clearCv(){const N=getN(),p=N.p[N.i],c=$('cv');c.getContext('2d').clearRect(0,0,c.width,c.height);p.c='';qDraw(CHAP().id,p)}
+async function loadDraw(p){
+  if(p.ld)return;p.ld=1;
+  try{
+    const r=await sb.storage.from('perso').download(p.path);
+    if(r.error)throw r.error;
+    if(p.c===undefined)p.c=await b2d(r.data);
+  }catch(e){if(p.c===undefined)p.c='';setNs('Dessin illisible : '+(e.message||e),1)}
+  if(S.v==='cours'&&S.N&&S.N.p[S.N.i]===p)bindNotes();
+}
+function bindNotes(){
+  const nt=$('nt'),cv=$('cv');if(!nt||!cv)return;
+  const N=getN(),page=N.p[N.i],chap=CHAP().id;
+  $('pn').textContent='Page '+(N.i+1)+' / '+N.p.length;
+  setNs(S.nst,S.nko);
+  nt.value=page.t;
+  nt.oninput=()=>{page.t=nt.value;setNs('Modifications non enregistrées…');later('t'+chap+':'+page.n,()=>sendNote(chap,page),800)};
+  const x=cv.getContext('2d'),wait=page.path&&page.c===undefined;
+  if(page.c){const im=new Image();im.onload=()=>{if($('cv')===cv)x.drawImage(im,0,0)};im.src=page.c}
+  if(wait){cv.style.opacity='.5';loadDraw(page)}
+  x.strokeStyle=getComputedStyle($('app')).getPropertyValue('--acc').trim()||'#4f8ff0';
+  x.lineWidth=3;x.lineCap='round';
+  let on=false;
+  const pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
+  cv.onpointerdown=e=>{if(wait)return;on=true;cv.setPointerCapture(e.pointerId);const[a,b]=pt(e);x.beginPath();x.moveTo(a,b)};
+  cv.onpointermove=e=>{if(!on)return;const[a,b]=pt(e);x.lineTo(a,b);x.stroke()};
+  cv.onpointerup=()=>{if(!on)return;on=false;try{page.c=cv.toDataURL();qDraw(chap,page)}catch(e){}};
+}
+
+/* générateur : domaines du plan (modèles = données, valeurs tirées au hasard) */
+let MOD=[
+ {p:{a:[-3,-1],b:[1,3],c:[-2,0],d:[1,2]},f:'{a}<=x<={b} et {c}<=y<={d}',h:'Encadre x entre deux valeurs, puis y entre deux valeurs.'},
+ {p:{a:[1,3]},f:'x>=0 et y>=0 et x+y<={a}',h:'Une droite oblique ferme le triangle contre les deux axes.'},
+ {p:{a:[1,3]},f:'0<=x<={a} et 0<=y<=x',h:"Le triangle est limité par l'axe des x, la droite y = x et une verticale."},
+ {p:{a:[1,2]},f:'x^2+y^2<={a}^2 et (y>=0 ou x>=0)',h:'Disque de rayon {a}, privé d\'un quart : combine « et » avec « ou ».'},
+ {p:{a:[1,2]},f:'x^2+y^2<={a}^2 et y>=0',h:'Disque de rayon {a} : garde seulement la moitié du dessus.'}
+];
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function splitTop(s,sep){const o=[];let d=0,b=0;for(let i=0;i<s.length;i++){const c=s[i];if(c==='(')d++;else if(c===')')d--;else if(!d&&s.startsWith(sep,i)){o.push(s.slice(b,i));b=i+sep.length;i+=sep.length-1}}o.push(s.slice(b));return o}
+function wrapped(s){if(s[0]!=='(')return false;let d=0;for(let i=0;i<s.length;i++){if(s[i]==='(')d++;else if(s[i]===')'&&--d===0)return i===s.length-1}return false}
+function tree(s){
+  s=s.trim();while(wrapped(s))s=s.slice(1,-1).trim();
+  for(const[sep,m]of[['||','some'],['&&','every']]){const p=splitTop(s,sep);if(p.length>1){const f=p.map(tree);return(x,y)=>f[m](g=>g(x,y))}}
+  const ops=s.match(/<=|>=|<|>|=/g);if(!ops)throw 0;
+  const f=s.split(/<=|>=|<|>|=/).map(e=>{
+    e=e.replace(/([xy]|\d+(?:\.\d+)?|\([^()]*\))\^([xy]|\d+(?:\.\d+)?|\([^()]*\))/g,'Math.pow($1,$2)');
+    return new Function('x','y','return ('+e+')')});
+  return(x,y)=>{const v=f.map(g=>g(x,y));return ops.every((o,i)=>o==='<='?v[i]<=v[i+1]:o==='>='?v[i]>=v[i+1]:o==='<'?v[i]<v[i+1]:o==='>'?v[i]>v[i+1]:Math.abs(v[i]-v[i+1])<1e-9)}
+}
+function compileD(s){
+  try{
+    s=s.toLowerCase().replace(/≤|⩽/g,'<=').replace(/≥|⩾/g,'>=').replace(/\bet\b|∧/g,'&&').replace(/\bou\b|∨/g,'||').replace(/²/g,'^2').replace(/,/g,'.');
+    s=s.replace(/(\d|\)|[xy])\s*(?=[xy(])/g,'$1*');
+    if(!/^[0-9xy+\-*/().<>=&|^ ]+$/.test(s))throw 0;
+    return tree(s);
+  }catch(e){throw new Error('Je ne comprends pas cette écriture. Exemple : -1<=x<=1 et 0<=y<=1')}
+}
+function ensureGen(){
+  const k=S.ex+':'+S.var+':'+S.lvl;if(S.gen&&S.gen.k===k)return;
+  const r=rng(S.ex*7919+S.var*104729+S.lvl*13),idx=[...MOD.keys()];
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]]}
+  const plans=idx.slice(0,S.lvl?2:1).map(i=>{
+    const m=MOD[i],v={};for(const q in m.p){const[lo,hi]=m.p[q];v[q]=lo+Math.floor(r()*(hi-lo+1))}
+    const fill=t=>t.replace(/\{(\w)\}/g,(_,q)=>v[q]),cond=fill(m.f);
+    return{cond,h:fill(m.h),fn:compileD(cond)}});
+  S.gen={k,plans,ans:[],res:[]};
+}
+function checkG(i){
+  const g=S.gen,p=g.plans[i],a=(g.ans[i]||'').trim();
+  if(!a){g.res[i]={m:"Écris d'abord une description."};render();return}
+  let u;try{u=compileD(a)}catch(e){g.res[i]={m:e.message};render();return}
+  let best=null,n=0;
+  for(let x=-3.4631;x<3.5;x+=.1)for(let y=-3.4631;y<3.5;y+=.1){
+    const t=p.fn(x,y),w=u(x,y);
+    if(t!==w){n++;const d=Math.abs(x)+Math.abs(y);if(!best||d<best.d)best={x,y,w,d}}}
+  g.res[i]=!n?{ok:1}:{m:S.lvl===2?"Ce n'est pas encore ça.":`Le point (${best.x.toFixed(1)} ; ${best.y.toFixed(1)}) ${best.w?'est dans ta description mais pas dans la figure':'est dans la figure mais pas dans ta description'}.`};
+  render();
+}
+function draw(cv,f){
+  const x=cv.getContext('2d'),W=cv.width,R=3.5,k=W/(2*R),acc=getComputedStyle($('app')).getPropertyValue('--acc').trim()||'#4fcf79';
+  x.fillStyle='#050a16';x.fillRect(0,0,W,W);x.globalAlpha=.4;x.fillStyle=acc;
+  for(let i=0;i<W;i+=2)for(let j=0;j<W;j+=2)if(f((i+1)/k-R,R-(j+1)/k))x.fillRect(i,j,2,2);
+  x.globalAlpha=1;x.strokeStyle='#4a6090';x.fillStyle='#8da0cc';x.font='11px monospace';x.lineWidth=1;
+  x.beginPath();x.moveTo(0,W/2);x.lineTo(W,W/2);x.moveTo(W/2,0);x.lineTo(W/2,W);x.stroke();
+  for(let t=-3;t<=3;t++){if(!t)continue;const q=W/2+t*k;x.fillRect(q-.5,W/2-3,1,6);x.fillRect(W/2-3,W/2-t*k-.5,6,1);x.fillText(t,q-4,W/2+16);x.fillText(t,W/2+8,W/2-t*k+4)}
+}
+function bindGen(){if(S.v!=='exos'||S.ex===null||!S.gen)return;document.querySelectorAll('canvas.dom').forEach(cv=>draw(cv,S.gen.plans[+cv.dataset.i].fn))}
+function genView(l){
+  const g=S.gen,done=g.plans.every((_,i)=>g.res[i]&&g.res[i].ok);
+  return `<section class="panel"><h3>Description de domaines du plan</h3>
+  <p>Décris mathématiquement chaque partie du plan représentée ci-dessous, avec des inégalités sur x et y.</p>
+  <p class="note">Exemple : <code>-1&lt;=x&lt;=1 et 0&lt;=y&lt;=1</code>. Utilise « et », « ou », et ^ pour les puissances. Inégalités strictes ou larges : les deux sont acceptées.</p>
+  <div class="gen">${g.plans.map((p,i)=>{const r=g.res[i],h=S.lvl===0?`<p class="note">Indication : ${p.h}</p>`:S.lvl===1?`<details><summary>Afficher l'indice</summary>${p.h}</details>`:'';
+    return `<div class="plan"><b>(${'ab'[i]}) Domaine ${i+1}</b>
+    <canvas class="dom" data-i="${i}" width="260" height="260" role="img" aria-label="Figure du domaine ${i+1}"></canvas>
+    <input type="text" value="${esc(g.ans[i]||'')}" oninput="S.gen.ans[${i}]=this.value" onkeydown="if(event.key==='Enter')checkG(${i})" placeholder="ta description" aria-label="Description du domaine ${i+1}">
+    <div class="row" style="margin:0"><button class="btn" onclick="checkG(${i})">Vérifier</button></div>
+    ${r?(r.ok?'<p class="good">Correct.</p>':`<p class="bad">${r.m}</p>`):''}${h}
+    <details><summary>Voir la correction</summary>Une réponse possible : <code>${esc(p.cond)}</code></details></div>`}).join('')}</div>
+  ${done?'<p class="good" style="margin-top:12px">Tout est juste : tu peux marquer l\'exercice comme réussi.</p>':''}
+  <div class="row" style="margin-top:12px"><button class="btn" onclick="S.var++;render()">Nouveau tirage</button></div></section>`;
+}
+
+const tid=()=>CHAP().ty[S.topic].id;
+function getR(){return S.RES[tid()]||{}}
+async function setR(n,k){
+  const t=tid(),lvl=S.lvl;
+  const r=await sb.from('resultats').upsert({user_id:S.user.id,type_id:t,numero:n,statut:k==='ok'?'reussi':'rate',niveau:lvl},{onConflict:'user_id,type_id,numero'}).select();
+  if(refused(r))return flash(refused(r),1);
+  (S.RES[t]=S.RES[t]||{})[n]={s:k,l:lvl};S.ex=null;render();
+}
+async function resetR(){
+  if(!S.cf){S.cf=true;render();return}
+  S.cf=false;const t=tid();
+  const r=await sb.from('resultats').delete().eq('user_id',S.user.id).eq('type_id',t);
+  if(r.error)return flash(fr(r.error.message),1);
+  S.RES[t]={};render();
+}
+function rnd(){const R=getR(),ids=[...Array(NX()).keys()].map(i=>i+1),todo=ids.filter(i=>!(R[i]&&R[i].s==='ok')),p=todo.length?todo:ids;S.ex=p[Math.floor(Math.random()*p.length)];render()}
+function topicList(){
+  const t=CHAP().t;
+  return `<div class="row"><button class="btn" onclick="go('chap')">‹ ${CHAP().n}</button></div>
+  <h1>Exos – ${CHAP().n}</h1>
+  <p class="lead">Choisis d'abord un type d'exercice, puis le niveau d'aide.</p>`+
+  (t.length?'<div class="cards">'+t.map((x,i)=>`<button class="card topic" onclick="S.topic=${i};S.ex=null;render()"><h2>${x}</h2><p>Liste d'exercices et suivi de tes résultats.</p></button>`).join('')+'</div>'
+  :`<div class="empty">Aucun type d'exercice dans ce chapitre pour le moment.</div>`)+tdHtml();
+}
+
+function render(){
+  const app=$('app');
+  if(!S.user)S.v='home';
+  if(['chap','cours','exos','annales'].includes(S.v)&&!(CHAPS[S.d]&&CHAPS[S.d][S.ch]))S.v='dom';
+  app.className='d-'+S.d;
+  const inD=['dom','chap','cours','exos','annales'].includes(S.v),inC=['chap','cours','exos','annales'].includes(S.v);
+  app.dataset.k=S.v==='cours'?'cours':S.v==='exos'?'exos':(S.v==='dom'||S.v==='chap')?'dom':'other';
+  $('path').textContent=['depot','admin'].includes(S.v)?'~/'+S.v+'$':'~'+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales'].includes(S.v)?'/'+S.v:'')+'$';
+  $('nav').innerHTML=S.user?`<button class="${S.v==='home'?'on':''}" onclick="go('home')">Accueil</button>`
+    +Object.keys(D).map(k=>`<button class="dn d-${k}${inD&&S.d===k?' on':''}" onclick="go('dom','${k}')">${D[k]}</button>`).join('')
+    +['depot','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}</button>`).join(''):'';
+  $('who').innerHTML=S.user?`<div>${esc(S.pseudo)} (${S.role==='admin'?'admin':'membre'})</div>`
+    +(S.role==='admin'?`<button class="btn" aria-pressed="${S.edit}" onclick="S.edit=!S.edit;render()">Mode édition : ${S.edit?'oui':'non'}</button>`:'')
+    +`<button class="btn" onclick="logout()">Se déconnecter</button>`:'';
+  let html;
+  if(!S.user)html=views.login();
+  else if(S.loading)html='<div class="empty">Chargement des données…</div>';
+  else if(S.err)html=`<section class="panel"><p class="bad">Impossible de charger les données : ${esc(S.err)}</p><div class="row"><button class="btn" onclick="enter(S.user)">Réessayer</button></div></section>`;
+  else html=views[S.v]();
+  $('view').innerHTML=(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html;
+  bindNotes();bindGen();
+}
+/* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
+const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y4tkgIlrNoHjjsRSw_DjjA_NrBmdQfr';
+const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY):null;
+const DB={intro:''};
+const ed=()=>S.edit&&S.role==='admin';
+const fr=m=>/invalid login/i.test(m)?'E-mail ou mot de passe incorrect.'
+  :/database error saving new user|signups? (not allowed|disabled)/i.test(m)?"Inscription refusée : code d'invitation invalide ou inscriptions fermées."
+  :/already registered/i.test(m)?'Cet e-mail a déjà un compte.':/not confirmed/i.test(m)?"Confirme d'abord ton e-mail.":m;
+const flash=(m,ko)=>{S.msg=m;S.ko=!!ko;render()};
+
+async function loadData(){
+  const [c,mo,co,dc]=await Promise.all([
+    sb.from('chapitres').select('id,matiere,titre,description,ordre,types_exo(id,titre,generateur,nb_exercices,ordre)').order('ordre'),
+    sb.from('modeles_exo').select('type_id,donnees'),
+    sb.from('contenus').select('cle,valeur'),
+    DOCQ()]);
+  const e=c.error||mo.error||co.error||dc.error;if(e)throw e;
+  DB.docs=dc.data||[];
+  for(const k in CHAPS)CHAPS[k]=[];
+  c.data.forEach(r=>{if(!CHAPS[r.matiere])return;
+    const ty=(r.types_exo||[]).slice().sort((a,b)=>a.ordre-b.ordre);
+    CHAPS[r.matiere].push({id:r.id,n:esc(r.titre),raw:r.titre,desc:r.description||'',ty,t:ty.map(x=>esc(x.titre))})});
+  const gens=new Set(c.data.flatMap(r=>(r.types_exo||[]).filter(x=>x.generateur==='domaines-plan').map(x=>x.id)));
+  const m=mo.data.filter(r=>gens.has(r.type_id)).map(r=>r.donnees).sort((a,b)=>a.f<b.f?-1:1);
+  if(m.length)MOD=m;
+  S.gen=null;
+  const i=co.data.find(r=>r.cle==='accueil.intro');DB.intro=i?i.valeur:'';
+}
+async function enter(user){
+  S.user=user;S.loading=true;S.err='';render();
+  try{
+    const p=await sb.from('profiles').select('pseudo,role').eq('id',user.id).single();
+    if(p.error)throw p.error;
+    S.pseudo=p.data.pseudo;S.role=p.data.role;await loadData();await loadMine();
+  }catch(e){S.err=e.message||String(e)}
+  S.loading=false;render();
+}
+async function login(){
+  const up=S.mode==='up',v=id=>($(id)?$(id).value:'').trim();
+  S.f={e:v('le'),u:v('lu'),c:v('lc')};
+  const pw=$('lp').value;
+  if(!S.f.e||!pw)return flash('Entre ton e-mail et ton mot de passe.',1);
+  if(up&&!/@student\.junia\.com$/i.test(S.f.e))return flash("Utilise ton adresse de l'école (…@student.junia.com).",1);
+  const r=up?await sb.auth.signUp({email:S.f.e,password:pw,options:{data:Object.assign({code:S.f.c},S.f.u?{pseudo:S.f.u}:{})}})
+            :await sb.auth.signInWithPassword({email:S.f.e,password:pw});
+  if(r.error)return flash(fr(r.error.message),1);
+  if(!r.data.session)return flash('Compte créé : confirme ton e-mail, puis connecte-toi.');
+  S.msg='';await enter(r.data.user);
+}
+async function logout(){try{await flushNotes()}catch(e){}await sb.auth.signOut();S.user=null;S.role='';S.edit=false;S.msg='';S.NR={};S.RES={};S.N=null;S.photos=[];S.nst='';render()}
+const refused=r=>r.error?fr(r.error.message):(!r.data||!r.data.length)?'Modification refusée (droits insuffisants).':'';
+async function saveIntro(){
+  const v=$('ei').value,r=await sb.from('contenus').upsert({cle:'accueil.intro',valeur:v}).select();
+  if(refused(r))return flash(refused(r),1);
+  DB.intro=v;flash('Texte enregistré.');
+}
+async function saveChap(){
+  const t=$('ec').value.trim();if(!t)return flash('Le titre ne peut pas être vide.',1);
+  const r=await sb.from('chapitres').update({titre:t,description:$('ed').value.trim()||null}).eq('id',CHAP().id).select();
+  if(refused(r))return flash(refused(r),1);
+  await loadData();flash('Chapitre enregistré.');
+}
+async function addChap(){
+  const t=$('nc').value.trim();if(!t)return flash('Donne un titre au chapitre.',1);
+  const r=await sb.from('chapitres').insert({matiere:S.d,titre:t,ordre:CHAPS[S.d].length+1}).select();
+  if(refused(r))return flash(refused(r),1);
+  await loadData();flash('Chapitre ajouté.');
+}
+function introHtml(){
+  const t=DB.intro||'Cours, exercices types et annales de la promo, rangés par matière puis par chapitre. Choisis une matière pour commencer.';
+  return ed()?`<textarea id="ei" maxlength="10000" aria-label="Texte d'accueil">${esc(t)}</textarea><div class="row" style="margin-top:8px"><button class="btn" onclick="saveIntro()">Enregistrer le texte</button></div>`
+    :`<p class="lead">${esc(t)}</p>`;
+}
+function addChapHtml(){
+  return ed()?`<div class="row"><input type="text" id="nc" placeholder="Titre du nouveau chapitre" aria-label="Titre du nouveau chapitre"><button class="btn" onclick="addChap()">Ajouter le chapitre</button></div>`:'';
+}
+function chapHead(c){
+  return ed()?`<div class="plan" style="max-width:520px;margin-bottom:14px"><input type="text" id="ec" value="${esc(c.raw)}" aria-label="Titre du chapitre">
+    <textarea id="ed" placeholder="Description du chapitre (facultatif)" aria-label="Description du chapitre">${esc(c.desc)}</textarea>
+    <div class="row" style="margin:0"><button class="btn" onclick="saveChap()">Enregistrer le chapitre</button></div></div>`
+    :`<h1>${c.n}</h1><p class="lead">${c.desc?esc(c.desc):'Que veux-tu faire dans ce chapitre ?'}</p>`;
+}
+
+/* ===== Documents : dépôt, tri admin, aperçu, téléchargement ===== */
+const TY={cours:'Cours',annale:'Annale',correction:'Correction',td:'TD du prof',td_corr:'Corrigé de TD'};
+const STD={en_attente:'En attente de tri',publie:'Publié',rejete:'Rejeté'};
+const MT={pdf:'application/pdf',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp'};
+const DOCQ=()=>sb.from('documents').select('id,type,titre,matiere,chapitre_id,annee,annale_id,fichier_path,statut,depose_par,created_at').order('created_at',{ascending:false});
+DB.docs=[];
+const ext=p=>(String(p).split('.').pop()||'').toLowerCase();
+const uid=()=>(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
+const clean=n=>n.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
+const pub=t=>DB.docs.filter(d=>d.statut==='publie'&&d.type===t);
+const corsOf=a=>pub('correction').filter(d=>d.annale_id===a);
+const SU={};
+async function signed(bucket,path,dl){
+  const k=bucket+'|'+path+'|'+(dl||'');
+  if(SU[k]&&SU[k].t>Date.now())return SU[k].u;
+  const r=await sb.storage.from(bucket).createSignedUrl(path,3600,dl?{download:dl}:undefined);
+  if(r.error)throw r.error;
+  SU[k]={u:r.data.signedUrl,t:Date.now()+3000000};return SU[k].u;
+}
+async function reloadDocs(){const r=await DOCQ();if(r.error)throw r.error;DB.docs=r.data||[]}
+async function showPv(id){
+  S.pvId=id;S.pu=null;S.pe='';render();if(!id)return;
+  try{const d=DB.docs.find(x=>x.id===id),u=await signed('documents',d.fichier_path);if(S.pvId===id)S.pu=u}
+  catch(e){if(S.pvId===id)S.pe=e.message||'Erreur de chargement'}
+  if(S.pvId===id)render();
+}
+function pvHtml(d){
+  if(!d)return '<div class="preview empty">Sélectionne un document pour l\'afficher ici.</div>';
+  if(S.pvId!==d.id||(!S.pu&&!S.pe))return '<div class="preview empty">Chargement de l\'aperçu…</div>';
+  if(S.pe)return `<div class="preview empty bad">Aperçu impossible : ${esc(S.pe)}</div>`;
+  return ext(d.fichier_path)==='pdf'?`<iframe class="pv" src="${esc(S.pu)}" title="${esc(d.titre)}"></iframe>`
+    :`<img class="pvi" src="${esc(S.pu)}" alt="${esc(d.titre)}">`;
+}
+async function dl(id){
+  const d=DB.docs.find(x=>x.id===id);if(!d)return;
+  try{const u=await signed('documents',d.fichier_path,d.titre.replace(/[\\/:*?"<>|]+/g,'_')+'.'+ext(d.fichier_path));
+    const a=document.createElement('a');a.href=u;a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
+  catch(e){flash('Téléchargement impossible : '+(e.message||e),1)}
+}
+const dlBtn=d=>`<div class="row" style="margin:12px 0 0"><button class="btn" ${d?`onclick="dl('${d.id}')"`:'disabled'}>Télécharger</button></div>`;
+
+/* Cours */
+function selDoc(id){S.docId=id;showPv(id)}
+function coursPanels(){
+  const L=pub('cours').filter(d=>d.chapitre_id===CHAP().id),sel=L.find(d=>d.id===S.docId);
+  return `<section class="panel"><h3>Arborescence</h3>${L.length?'<ul class="q">'+L.map(d=>`<li><button class="lnk${sel&&sel.id===d.id?' on':''}" onclick="selDoc('${d.id}')">${esc(d.titre)}</button></li>`).join('')+'</ul>'
+      :'<div class="empty">Aucun cours dans ce chapitre pour le moment.</div>'}</section>
+      <section class="panel"><h3>Aperçu</h3>${pvHtml(sel)}${dlBtn(sel)}</section>`;
+}
+
+/* TDs du prof (page Exos) */
+function tdHtml(){
+  const ch=d=>d.chapitre_id===CHAP().id,L=pub('td').filter(ch),C=pub('td_corr').filter(ch),sel=[...L,...C].find(d=>d.id===S.docId);
+  const list=(A,vide)=>A.length?'<ul class="q">'+A.map(d=>`<li><button class="lnk${sel&&sel.id===d.id?' on':''}" onclick="selDoc('${d.id}')">${esc(d.titre)}</button></li>`).join('')+'</ul>':`<div class="empty">${vide}</div>`;
+  return `<h2 style="margin:26px 0 8px;font-size:16px">TDs du prof</h2>
+  <p class="lead">Les feuilles de TD du chapitre et leurs corrigés, rangés séparément. Dépose-les depuis l'onglet Dépôt (types « TD du prof » et « Corrigé de TD »).</p>
+  <div class="grid2"><section class="panel"><h3>Énoncés (${L.length})</h3>${list(L,'Aucun TD dans ce chapitre pour le moment.')}
+    <h3 style="margin-top:16px">Corrigés (${C.length})</h3>${list(C,'Aucun corrigé pour le moment.')}</section>
+  <section class="panel"><h3>Aperçu</h3>${pvHtml(sel)}${dlBtn(sel)}</section></div>`;
+}
+
+/* Annales */
+function refreshTab(){
+  const a=S.docId;if(!a){render();return}
+  if(S.tab===0)return showPv(a);
+  if(S.tab===1){const c=corsOf(a),x=c.find(d=>d.id===S.corId)||c[0];return showPv(x?x.id:null)}
+  loadPerso(a);
+}
+function selAnn(id){S.docId=id;S.corId=null;refreshTab()}
+function setTab(i){S.tab=i;refreshTab()}
+function selCor(id){S.corId=id;showPv(id)}
+async function loadPerso(a){
+  S.photos=null;render();
+  try{
+    const r=await sb.from('corrections_perso').select('id,fichier_path').eq('annale_id',a).order('created_at');
+    if(r.error)throw r.error;
+    const L=await Promise.all(r.data.map(async x=>({id:x.id,path:x.fichier_path,u:await signed('perso',x.fichier_path)})));
+    if(S.docId===a)S.photos=L;
+  }catch(e){if(S.docId===a)S.photos=[];S.msg='Photos : '+(e.message||e);S.ko=true}
+  render();
+}
+async function addPhotos(files){
+  const L=[...files],a=S.docId;if(!L.length||!a)return;
+  for(const f of L){
+    if(!/^image\/(jpeg|png|webp)$/.test(f.type))return flash(`« ${f.name} » : seules les images JPEG, PNG ou WebP sont acceptées.`,1);
+    if(f.size>10*1048576)return flash(`« ${f.name} » dépasse 10 Mo.`,1);
+  }
+  S.msg='Envoi des photos…';S.ko=false;render();
+  for(const f of L){
+    const path=S.user.id+'/'+uid()+'-'+clean(f.name);
+    const u=await sb.storage.from('perso').upload(path,f,{contentType:f.type,upsert:false});
+    if(u.error)return flash("Envoi impossible : "+fr(u.error.message),1);
+    const r=await sb.from('corrections_perso').insert({user_id:S.user.id,annale_id:a,fichier_path:path}).select();
+    if(refused(r))return flash(refused(r),1);
+  }
+  S.msg='Photos ajoutées.';S.ko=false;await loadPerso(a);
+}
+async function delPhoto(id,path){
+  if(S.cfp!==id){S.cfp=id;render();return}
+  S.cfp=null;
+  const r=await sb.from('corrections_perso').delete().eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await sb.storage.from('perso').remove([path]);
+  S.photos=(S.photos||[]).filter(x=>x.id!==id);flash('Photo supprimée.');
+}
+function annHtml(){
+  const A=pub('annale').filter(d=>d.chapitre_id===CHAP().id).sort((a,b)=>(b.annee||0)-(a.annee||0)),
+    yrs=[...new Set(A.map(a=>a.annee).filter(Boolean))],L=S.yr?A.filter(a=>String(a.annee)===S.yr):A,
+    sel=A.find(d=>d.id===S.docId),T=['Sujet','Correction officielle','Mes corrections'];
+  let body;
+  if(!sel)body='<div class="preview empty">Sélectionne une annale pour commencer.</div>';
+  else if(S.tab===0)body=pvHtml(sel)+dlBtn(sel);
+  else if(S.tab===1){
+    const c=corsOf(sel.id),x=c.find(d=>d.id===S.corId)||c[0];
+    body=x?(c.length>1?'<div class="row">'+c.map(d=>`<button class="lvl${d.id===x.id?' on':''}" onclick="selCor('${d.id}')">${esc(d.titre)}</button>`).join('')+'</div>':'')+pvHtml(x)+dlBtn(x)
+      :'<div class="preview empty">Pas de correction officielle pour ce sujet.</div>';
+  }else{
+    body=`<div class="row"><label class="btn" style="cursor:pointer">Ajouter des photos
+      <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onchange="addPhotos(this.files);this.value=''"></label></div>`
+      +(S.photos===null?'<div class="empty">Chargement…</div>'
+      :`<div class="thumbs">${(S.photos||[]).map(x=>`<div><img src="${esc(x.u)}" alt="Photo de correction"><br>
+        <button class="btn" onclick="delPhoto('${x.id}','${esc(x.path)}')">${S.cfp===x.id?'Confirmer la suppression':'Supprimer'}</button></div>`).join('')
+        ||'<div class="empty" style="width:100%">Prends en photo ta copie ou ta correction pour la ranger avec ce sujet. Seul toi les vois.</div>'}</div>`);
+  }
+  return `<div class="row"><button class="btn" onclick="go('chap')">‹ ${CHAP().n}</button></div>
+    <h1>Annales – ${CHAP().n}</h1>
+    <p class="lead">Sujets avec ou sans correction. Tes photos restent rattachées à l'annale ciblée.</p>
+    <div class="row"><select aria-label="Année" onchange="S.yr=this.value;render()"><option value="">Toutes les années</option>${yrs.map(y=>`<option value="${y}"${String(y)===S.yr?' selected':''}>${y}</option>`).join('')}</select></div>
+    <div class="grid2">
+      <section class="panel"><h3>Sujets</h3>${L.length?'<ul class="q">'+L.map(d=>`<li><button class="lnk${sel&&sel.id===d.id?' on':''}" onclick="selAnn('${d.id}')">${esc(d.titre)}${d.annee?' ('+d.annee+')':''}</button></li>`).join('')+'</ul>'
+        :'<div class="empty">Aucune annale dans ce chapitre.<br><br>Dépose-en une depuis l\'onglet Dépôt.</div>'}</section>
+      <section class="panel"><div class="tabs" style="margin-bottom:12px">${T.map((x,i)=>`<button class="tab d-${S.d}${i===S.tab?' on':''}" onclick="setTab(${i})">${x}</button>`).join('')}</div>${body}</section>
+    </div>`;
+}
+
+/* Dépôt (membres) */
+async function upload(){
+  const f=[...$('df').files],m=$('dd').value,ty=$('dt').value,t=$('dti').value.trim();
+  if(!f.length)return flash('Choisis au moins un fichier.',1);
+  const mts=f.map(x=>x.type||MT[ext(x.name)]||'');
+  for(let i=0;i<f.length;i++){
+    if(!Object.values(MT).includes(mts[i]))return flash(`« ${f[i].name} » : seuls les PDF et images (JPEG, PNG, WebP) sont acceptés.`,1);
+    if(f[i].size>20*1048576)return flash(`« ${f[i].name} » dépasse 20 Mo.`,1);
+  }
+  S.busy=true;S.msg='Envoi en cours…';S.ko=false;render();
+  let n=0;
+  try{
+    for(let i=0;i<f.length;i++){
+      const path=S.user.id+'/'+uid()+'-'+clean(f[i].name);
+      const u=await sb.storage.from('documents').upload(path,f[i],{contentType:mts[i],upsert:false});
+      if(u.error)throw new Error(fr(u.error.message));
+      const titre=(f.length===1&&t)?t:f[i].name.replace(/\.[^.]+$/,'');
+      const r=await sb.from('documents').insert({type:ty,titre:titre.slice(0,200),matiere:m,fichier_path:path,statut:'en_attente',depose_par:S.user.id}).select();
+      if(refused(r))throw new Error(refused(r));
+      n++;
+    }
+    await reloadDocs();S.busy=false;flash(n+' fichier'+(n>1?'s':'')+' envoyé'+(n>1?'s':'')+' : en attente de tri par un admin.');
+  }catch(e){S.busy=false;try{await reloadDocs()}catch(_){}flash((n?n+' envoyé(s), puis erreur : ':'Envoi impossible : ')+(e.message||e),1)}
+}
+function depotHtml(){
+  const mine=DB.docs.filter(d=>d.depose_par===S.user.id);
+  return `<h1>Dépôt</h1>
+  <p class="lead">Ajoute tes documents (PDF ou images, 20 Mo maximum). Un admin les trie et les publie dans le bon chapitre.</p>
+  <section class="panel"><div class="row">
+    <select id="dd" aria-label="Matière">${Object.keys(D).map(k=>`<option value="${k}"${k===S.d?' selected':''}>${D[k]}</option>`).join('')}</select>
+    <select id="dt" aria-label="Type">${Object.keys(TY).map(k=>`<option value="${k}">${TY[k]}</option>`).join('')}</select>
+    <input type="text" id="dti" maxlength="200" placeholder="Titre (facultatif)" aria-label="Titre">
+  </div><div class="row">
+    <input type="file" id="df" multiple accept="application/pdf,image/jpeg,image/png,image/webp" aria-label="Fichiers">
+    <button class="btn" ${S.busy?'disabled':''} onclick="upload()">${S.busy?'Envoi…':'Envoyer'}</button></div>
+    <h3>Mes dépôts (${mine.length})</h3>
+    ${mine.length?'<ul class="q">'+mine.map(d=>`<li><span>${esc(d.titre)} <span class="note" style="margin:0">${D[d.matiere]||''} – ${TY[d.type]}</span></span><span class="badge ${d.statut==='publie'?'ok':d.statut==='rejete'?'ko':''}">${STD[d.statut]}</span></li>`).join('')+'</ul>':'<div class="empty">Tu n\'as rien déposé pour le moment.</div>'}
+  </section>`;
+}
+
+/* Tri (admin) */
+const A_=d=>S.adm[d.id]||(S.adm[d.id]={t:d.titre,m:d.matiere,c:'',ty:d.type,y:'',a:''});
+function admSet(id,k,v,re){
+  const a=S.adm[id];a[k]=v;
+  if(k==='m'){a.c='';a.a=''}if(k==='c')a.a='';
+  if(re)render();
+}
+async function admPublish(id){
+  const d=DB.docs.find(x=>x.id===id),a=A_(d);
+  if(!a.c)return flash('Choisis un chapitre avant de publier.',1);
+  if(a.ty==='correction'&&!a.a)return flash("Une correction doit être rattachée à une annale (publie d'abord l'annale).",1);
+  const y=a.y===''?null:parseInt(a.y,10);
+  if(y!==null&&(isNaN(y)||y<1990||y>2100))return flash("Année invalide.",1);
+  const r=await sb.from('documents').update({titre:(a.t||d.titre).trim().slice(0,200),type:a.ty,matiere:a.m,chapitre_id:a.c,annee:y,annale_id:a.ty==='correction'?a.a:null,statut:'publie',publie_par:S.user.id}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  delete S.adm[id];if(S.pvId===id)S.pvId=null;
+  await reloadDocs();flash('Document publié.');
+}
+async function admReject(id){
+  const r=await sb.from('documents').update({statut:'rejete'}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  if(S.pvId===id)S.pvId=null;
+  await reloadDocs();flash('Document rejeté.');
+}
+async function admDelete(id){
+  if(S.cfd!==id){S.cfd=id;render();return}
+  S.cfd=null;
+  const d=DB.docs.find(x=>x.id===id),r=await sb.from('documents').delete().eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await sb.storage.from('documents').remove([d.fichier_path]);
+  if(S.pvId===id)S.pvId=null;
+  await reloadDocs();flash('Document supprimé.');
+}
+function admHtml(){
+  const P=DB.docs.filter(d=>d.statut==='en_attente'),O=DB.docs.filter(d=>d.statut!=='en_attente'),pd=DB.docs.find(d=>d.id===S.pvId);
+  const row=d=>{
+    const a=A_(d),ch=CHAPS[a.m]||[],ann=a.c?pub('annale').filter(x=>x.chapitre_id===a.c):[];
+    return `<div class="adm"><div class="row"><b>${esc(d.fichier_path.split('/').pop().replace(/^[0-9a-f-]{36}-/,''))}</b>
+      <button class="btn" onclick="showPv('${d.id}')">Voir</button></div>
+      <div class="row"><input type="text" value="${esc(a.t)}" maxlength="200" aria-label="Titre" oninput="admSet('${d.id}','t',this.value)">
+      <select aria-label="Type" onchange="admSet('${d.id}','ty',this.value,1)">${Object.keys(TY).map(k=>`<option value="${k}"${k===a.ty?' selected':''}>${TY[k]}</option>`).join('')}</select>
+      <select aria-label="Matière" onchange="admSet('${d.id}','m',this.value,1)">${Object.keys(D).map(k=>`<option value="${k}"${k===a.m?' selected':''}>${D[k]}</option>`).join('')}</select>
+      <select aria-label="Chapitre" onchange="admSet('${d.id}','c',this.value,1)"><option value="">— chapitre —</option>${ch.map(c=>`<option value="${c.id}"${c.id===a.c?' selected':''}>${c.n}</option>`).join('')}</select>
+      ${a.ty==='annale'?`<input type="number" value="${esc(a.y)}" placeholder="Année" aria-label="Année" oninput="admSet('${d.id}','y',this.value)">`:''}
+      ${a.ty==='correction'?`<select aria-label="Annale" onchange="admSet('${d.id}','a',this.value,1)"><option value="">— annale —</option>${ann.map(x=>`<option value="${x.id}"${x.id===a.a?' selected':''}>${esc(x.titre)}${x.annee?' ('+x.annee+')':''}</option>`).join('')}</select>`:''}</div>
+      <div class="row" style="margin:0"><button class="btn" onclick="admPublish('${d.id}')">Publier</button><button class="btn" onclick="admReject('${d.id}')">Rejeter</button></div></div>`};
+  return `<h1>Admin – file de tri</h1><p class="lead">Range chaque dépôt dans un chapitre, puis publie-le. Il devient alors visible par toute la promo.</p>
+  <section class="panel"><h3>En attente (${P.length})</h3>${P.length?P.map(row).join(''):'<div class="empty">Rien à trier pour le moment.</div>'}
+    ${pd&&pd.statut==='en_attente'?'<h3 style="margin-top:14px">Aperçu</h3>'+pvHtml(pd):''}</section>
+  <section class="panel" style="margin-top:14px"><h3>Publiés et rejetés (${O.length})</h3>${O.length?'<ul class="q">'+O.map(d=>`<li><span>${esc(d.titre)} <span class="note" style="margin:0">${TY[d.type]} – ${STD[d.statut]}</span></span>
+    <span class="row" style="margin:0"><button class="btn" onclick="showPv('${d.id}')">Voir</button><button class="btn" onclick="admDelete('${d.id}')">${S.cfd===d.id?'Confirmer la suppression':'Supprimer'}</button></span></li>`).join('')+'</ul>'
+    +(pd&&pd.statut!=='en_attente'?pvHtml(pd):''):'<div class="empty">Aucun document.</div>'}</section>`;
+}
+
+async function boot(){
+  if(!sb)return flash('Impossible de charger Supabase : vérifie ta connexion internet.',1);
+  sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'){S.user=null;S.role='';S.edit=false;S.NR={};S.RES={};S.N=null;S.photos=[];render()}});
+  const {data}=await sb.auth.getSession();
+  if(data.session)await enter(data.session.user);else render();
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.user)flushNotes()});
+boot();
+</script>
+</body>
+</html>
