@@ -1088,6 +1088,9 @@ function acctView(){
 }
 /* ===== Tableau de notes (arbre domaine > matière > épreuve, coefs modifiables par l'admin) ===== */
 const sem=(a,s)=>(a-1)*2+s;
+/* la grille dépend de la promo : chaque promo a ses propres coefficients */
+const gPromo=()=>ed()&&S.gp?S.gp:(S.prof&&S.prof.promo)||null;
+const gk=a=>a+'|'+gPromo();
 const fx=(v,d=2)=>v==null?'—':Number(v).toFixed(d).replace('.',',');
 const gTrim=s=>String(s==null?'':s).trim();
 const gKids=(N,sm,id)=>N.filter(n=>n.semestre===sm&&(n.parent_id||null)===id).sort((a,b)=>a.ordre-b.ordre);
@@ -1104,29 +1107,29 @@ function gcalc(N,NO,sm){
   return{R,root:{v:w?s/w:null,nb,tot}};
 }
 async function gridLoad(force){
-  const a=S.y;if(!sb||!S.user||a===null)return;
-  if(S.G[a]&&!force&&!S.G[a].err)return;
-  S.G[a]={loading:true};render();
+  const a=S.y;if(!sb||!S.user||a===null||!gPromo())return;
+  if(S.G[gk(a)]&&!force&&!S.G[gk(a)].err)return;
+  S.G[gk(a)]={loading:true};render();
   try{
-    const n=await sb.from('grille_noeuds').select('id,annee,semestre,parent_id,titre,coef,feuille,ordre').eq('annee',a).order('ordre');
+    const n=await sb.from('grille_noeuds').select('id,annee,semestre,parent_id,titre,coef,feuille,ordre,promo').eq('annee',a).eq('promo',gPromo()).order('ordre');
     if(n.error)throw n.error;
     const m=await sb.from('grille_notes').select('noeud_id,valeur,absent,fichier_path,fichier_nom').eq('user_id',S.user.id);
     if(m.error)throw m.error;
     const NO={};(m.data||[]).forEach(x=>{NO[x.noeud_id]={v:x.valeur,abs:!!x.absent,path:x.fichier_path,nom:x.fichier_nom}});
-    S.G[a]={nodes:n.data||[],notes:NO};
-    [1,2].forEach(s=>gSync(a,s));
-  }catch(e){S.G[a]={err:e.message||String(e)}}
+    S.G[gk(a)]={nodes:n.data||[],notes:NO};
+    if(gPromo()===(S.prof&&S.prof.promo))[1,2].forEach(s=>gSync(a,s));
+  }catch(e){S.G[gk(a)]={err:e.message||String(e)}}
   render();
 }
 async function gSync(a,s){
-  try{const G=S.G[a];if(!G||!G.nodes)return;
+  try{const G=S.G[gk(a)];if(!G||!G.nodes)return;
     const r=gcalc(G.nodes,G.notes,s).root;
     if(r.v==null||r.nb<1){await sb.from('moyennes').delete().eq('user_id',S.user.id).eq('annee',a).eq('semestre',s);return}
     await sb.from('moyennes').upsert({user_id:S.user.id,annee:a,semestre:s,moyenne:Math.round(r.v*100)/100,nb:r.nb,updated_at:new Date().toISOString()},{onConflict:'user_id,annee,semestre'});
   }catch(e){}
 }
 async function gPut(id,patch){
-  const a=S.y,G=S.G[a],cur=Object.assign({v:null,abs:false,path:null,nom:null},G.notes[id]||{},patch);
+  const a=S.y,G=S.G[gk(a)],cur=Object.assign({v:null,abs:false,path:null,nom:null},G.notes[id]||{},patch);
   let r;
   if(cur.v==null&&!cur.abs&&!cur.path){
     r=await sb.from('grille_notes').delete().eq('user_id',S.user.id).eq('noeud_id',id).select();
@@ -1137,7 +1140,7 @@ async function gPut(id,patch){
     if(refused(r))return flash(refused(r),1);
     G.notes[id]=cur;
   }
-  gSync(a,S.gs);S.msg='';render();
+  if(gPromo()===(S.prof&&S.prof.promo))gSync(a,S.gs);S.msg='';render();
 }
 function gSet(id,val){
   const t=gTrim(val).replace(',','.');
@@ -1151,7 +1154,7 @@ async function gFile(id,files){
   if(!/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type))return flash('Fichier refusé : PDF, JPEG, PNG ou WebP uniquement.',1);
   if(f.size>10*1048576)return flash('Fichier trop lourd (10 Mo maximum).',1);
   S.msg='Envoi du fichier…';S.ko=false;render();
-  const path=S.user.id+'/'+uid()+'-'+clean(f.name),old=(S.G[S.y].notes[id]||{}).path;
+  const path=S.user.id+'/'+uid()+'-'+clean(f.name),old=(S.G[gk(S.y)].notes[id]||{}).path;
   const u=await sb.storage.from('perso').upload(path,f,{contentType:f.type,upsert:false});
   if(u.error)return flash('Envoi impossible : '+fr(u.error.message),1);
   await gPut(id,{path,nom:f.name.slice(0,120)});
@@ -1159,12 +1162,12 @@ async function gFile(id,files){
 }
 async function gDelFile(id){
   if(S.cff!==id){S.cff=id;render();return}
-  S.cff=null;const old=(S.G[S.y].notes[id]||{}).path;
+  S.cff=null;const old=(S.G[gk(S.y)].notes[id]||{}).path;
   await gPut(id,{path:null,nom:null});
   if(old)sb.storage.from('perso').remove([old]);
 }
 async function gView(id){
-  const x=S.G[S.y].notes[id];if(!x||!x.path)return;
+  const x=S.G[gk(S.y)].notes[id];if(!x||!x.path)return;
   const nm=x.nom||'Fichier',pdf=/\.pdf$/i.test(x.path)||/\.pdf$/i.test(nm);
   S.gm={nom:nm,pdf,url:null,err:''};render();
   try{const u=await signed('perso',x.path);if(S.gm&&S.gm.nom===nm){S.gm.url=u}}
@@ -1179,27 +1182,41 @@ const gModal=()=>S.gm?`<div class="ovl" onclick="if(event.target===this)gClose()
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.gm)gClose()});
 /* édition de la grille (admin) */
 async function gAdd(pid,feuille){
-  const a=S.y,N=S.G[a].nodes,sib=gKids(N,S.gs,pid||null),o=sib.length?Math.max(...sib.map(x=>x.ordre))+1:1;
-  const r=await sb.from('grille_noeuds').insert({annee:a,semestre:S.gs,parent_id:pid||null,titre:feuille?'Nouvelle épreuve':pid?'Nouvelle matière':'Nouveau domaine',coef:0,feuille:!!feuille,ordre:o}).select();
+  const a=S.y,N=S.G[gk(a)].nodes,sib=gKids(N,S.gs,pid||null),o=sib.length?Math.max(...sib.map(x=>x.ordre))+1:1;
+  const r=await sb.from('grille_noeuds').insert({annee:a,promo:gPromo(),semestre:S.gs,parent_id:pid||null,titre:feuille?'Nouvelle épreuve':pid?'Nouvelle matière':'Nouveau domaine',coef:0,feuille:!!feuille,ordre:o}).select();
   if(refused(r))return flash(refused(r),1);
-  S.G[a].nodes.push(r.data[0]);S.msg='';render();
+  S.G[gk(a)].nodes.push(r.data[0]);S.msg='';render();
 }
 async function gEdit(id,k,v){
-  const a=S.y,n=S.G[a].nodes.find(x=>x.id===id);if(!n)return;
+  const a=S.y,n=S.G[gk(a)].nodes.find(x=>x.id===id);if(!n)return;
   let val;
   if(k==='titre'){val=gTrim(v);if(!val||val.length>80)return flash('Titre : 1 à 80 caractères.',1)}
   else{val=Number(gTrim(v).replace(',','.'));if(!isFinite(val)||val<0)return flash('Le coefficient doit être un nombre positif.',1)}
   const r=await sb.from('grille_noeuds').update({[k]:val}).eq('id',id).select();
   if(refused(r))return flash(refused(r),1);
-  n[k]=val;gSync(a,S.gs);S.msg='';render();
+  n[k]=val;if(gPromo()===(S.prof&&S.prof.promo))gSync(a,S.gs);S.msg='';render();
 }
 async function gMove(id,dir){
-  const a=S.y,N=S.G[a].nodes,n=N.find(x=>x.id===id),sib=gKids(N,n.semestre,n.parent_id||null),i=sib.findIndex(x=>x.id===id),o=sib[i+dir];
+  const a=S.y,N=S.G[gk(a)].nodes,n=N.find(x=>x.id===id),sib=gKids(N,n.semestre,n.parent_id||null),i=sib.findIndex(x=>x.id===id),o=sib[i+dir];
   if(!o)return;
   const r1=await sb.from('grille_noeuds').update({ordre:o.ordre}).eq('id',n.id).select(),r2=await sb.from('grille_noeuds').update({ordre:n.ordre}).eq('id',o.id).select();
   if(refused(r1)||refused(r2))return flash(refused(r1)||refused(r2),1);
   const t=n.ordre;n.ordre=o.ordre;o.ordre=t;render();
 }
+async function gCopy(){
+  const a=S.y,P=gPromo(),src=Number($('gcs').value);
+  if(!(Number.isInteger(src)&&src>=2000&&src<=2100)||src===P)return flash('Indique une autre promo à copier (2000–2100).',1);
+  const G=S.G[gk(a)];if(G&&G.nodes&&G.nodes.length)return flash('La grille de la promo '+P+' contient déjà des lignes : supprime-les d\'abord pour copier.',1);
+  const r=await sb.from('grille_noeuds').select('id,semestre,parent_id,titre,coef,feuille,ordre').eq('annee',a).eq('promo',src);
+  if(r.error)return flash(fr(r.error.message),1);
+  if(!r.data.length)return flash('La promo '+src+' n\'a pas de grille pour la '+YN[a]+'.',1);
+  const M={};r.data.forEach(x=>{M[x.id]=uid()});
+  const rows=r.data.map(x=>({id:M[x.id],annee:a,promo:P,semestre:x.semestre,parent_id:x.parent_id?M[x.parent_id]:null,titre:x.titre,coef:x.coef,feuille:x.feuille,ordre:x.ordre}));
+  const w=await sb.from('grille_noeuds').insert(rows).select();
+  if(w.error)return flash(fr(w.error.message),1);
+  await gridLoad(true);flash('Grille copiée depuis la promo '+src+' : tu peux maintenant l\'adapter.');
+}
+function gPromoSet(v){const p=Number(v);if(!(Number.isInteger(p)&&p>=2000&&p<=2100))return flash('Promo invalide (2000–2100).',1);S.gp=p;gridLoad()}
 async function gDel(id){
   if(S.cgd!==id){S.cgd=id;render();return}
   S.cgd=null;const a=S.y;
@@ -1208,7 +1225,7 @@ async function gDel(id){
   await gridLoad(true);flash('Ligne supprimée.');
 }
 function gNode(n,R,depth,siblingsSum){
-  const r=R[n.id]||{},N=S.G[S.y].nodes,NO=S.G[S.y].notes,E=ed();
+  const r=R[n.id]||{},N=S.G[gk(S.y)].nodes,NO=S.G[gk(S.y)].notes,E=ed();
   const sib=gKids(N,S.gs,n.parent_id||null),i=sib.findIndex(x=>x.id===n.id);
   const ctl=E?`<span class="gctl"><input type="text" class="gt" value="${esc(n.titre)}" maxlength="80" aria-label="Titre" onchange="gEdit('${n.id}','titre',this.value)">
     <label>coef <input type="number" class="gc" min="0" step="any" value="${esc(n.coef)}" aria-label="Coefficient" onchange="gEdit('${n.id}','coef',this.value)"></label>
@@ -1230,18 +1247,23 @@ function gNode(n,R,depth,siblingsSum){
     ${E?`<div class="row" style="margin:6px 0 0"><button class="btn" onclick="gAdd('${n.id}',true)">+ épreuve</button><button class="btn" onclick="gAdd('${n.id}',false)">+ sous-matière</button></div>`:''}</div>`;
 }
 function grilleView(){
-  const a=S.y,G=S.G[a],head=`<div class="row"><button class="btn" onclick="go('home')">‹ ${YN[a]}</button></div><h1>Mon tableau de notes – ${YN[a]}</h1>`;
-  if(!G||G.loading)return head+'<div class="empty">Chargement…</div>';
+  const a=S.y,G=S.G[gk(a)],head=`<div class="row"><button class="btn" onclick="go('home')">‹ ${YN[a]}</button></div><h1>Mon tableau de notes – ${YN[a]}</h1>`;
+  if(!gPromo())return head+`<div class="empty">Renseigne ta promo dans « Mon compte » : les coefficients dépendent de ta promo.</div>`;
+  if(!G){setTimeout(gridLoad,0);return head+'<div class="empty">Chargement…</div>'}
+  if(G.loading)return head+'<div class="empty">Chargement…</div>';
   if(G.err)return head+`<section class="panel"><p class="bad">Impossible de charger le tableau : ${esc(G.err)}</p><p class="note">As-tu lancé « maj-notes-classement.sql » dans Supabase ?</p><div class="row"><button class="btn" onclick="gridLoad(true)">Réessayer</button></div></section>`;
   const sm=S.gs,C=gcalc(G.nodes,G.notes,sm),roots=gKids(G.nodes,sm,null),yr=Object.values(CHAPS).flat().filter(c=>c.an===a).flatMap(c=>c.ty),ag=agg(yr);
-  return head+`<p class="lead">Note tes vraies notes (sur 20) : les moyennes se calculent toutes seules avec les coefficients. Une case vide est ignorée (moyenne provisoire). Une épreuve marquée « abs » est ignorée : les coefficients des autres épreuves sont recalculés pour que la moyenne reste réaliste. Tu peux joindre le sujet, la copie ou le relevé à chaque note ; tout reste privé.</p>
+  const P=gPromo(),pbar=`<p class="note" style="margin:0 0 10px">Grille de la promo ${P} (entrée en ${P}). Chaque promo a ses propres coefficients.</p>`
+    +(ed()?`<div class="row"><label class="note" style="margin:0">Promo modifiée <input type="number" min="2000" max="2100" value="${P}" style="width:90px" onchange="gPromoSet(this.value)"></label>
+      <label class="note" style="margin:0">Copier la grille de la promo <input type="number" id="gcs" min="2000" max="2100" placeholder="ex. ${P-1}" style="width:90px"></label><button class="btn" onclick="gCopy()">Copier</button></div>`:'');
+  return head+pbar+`<p class="lead">Note tes vraies notes (sur 20) : les moyennes se calculent toutes seules avec les coefficients. Une case vide est ignorée (moyenne provisoire). Une épreuve marquée « abs » est ignorée : les coefficients des autres épreuves sont recalculés pour que la moyenne reste réaliste. Tu peux joindre le sujet, la copie ou le relevé à chaque note ; tout reste privé.</p>
   <div class="tabs" style="--c:#3b6fd4">${[1,2].map(s=>`<button class="tab${s===sm?' on':''}" onclick="S.gs=${s};render()">Semestre ${sem(a,s)}</button>`).join('')}</div>
   <div class="cards" style="margin-bottom:14px">
     <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Moyenne du semestre ${sem(a,sm)}</p><div class="big">${fx(C.root.v)}${C.root.v==null?'':' / 20'}</div>
       <p style="margin:0">${C.root.nb} note${C.root.nb>1?'s':''} saisie${C.root.nb>1?'s':''} sur ${C.root.tot}${C.root.nb<C.root.tot&&C.root.v!=null?' (provisoire)':''}</p></div>
     <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Avancement des exos – ${YN[a]}</p><div class="big">${ag.ok} / ${ag.n}</div><div class="bar"><i style="width:${pct(ag.ok,ag.n)}%"></i></div><p style="margin:6px 0 0">${pct(ag.ok,ag.n)} % réussis</p></div>
   </div>
-  ${roots.length?roots.map(n=>`<section class="panel" style="margin-bottom:14px">${gNode(n,C.R,0)}</section>`).join(''):'<div class="empty">Aucune ligne dans ce semestre pour le moment.'+(ed()?'':' L\'admin peut composer le tableau (mode édition).')+'</div>'}
+  ${roots.length?roots.map(n=>`<section class="panel" style="margin-bottom:14px">${gNode(n,C.R,0)}</section>`).join(''):'<div class="empty">Aucune ligne dans ce semestre pour la promo '+P+' pour le moment.'+(ed()?' Copie la grille d\'une autre promo ou ajoute un domaine.':' L\'admin n\'a pas encore composé la grille de ta promo.')+'</div>'}
   ${ed()?`<div class="row"><button class="btn" onclick="gAdd(null,false)">+ domaine</button></div>`:''}`;
 }
 /* ===== Classements par promo ===== */
@@ -1406,7 +1428,7 @@ async function enter(user){
     let p=await sb.from('profiles').select('pseudo,role,promo,promo_verifiee,classement_exos,classement_reel').eq('id',user.id).single();
     if(p.error)p=await sb.from('profiles').select('pseudo,role').eq('id',user.id).single();
     if(p.error)throw p.error;
-    S.prof={promo:p.data.promo||null,verif:!!p.data.promo_verifiee,cex:!!p.data.classement_exos,cre:!!p.data.classement_reel};S.G={};S.cl.promo=S.prof.promo;
+    S.prof={promo:p.data.promo||null,verif:!!p.data.promo_verifiee,cex:!!p.data.classement_exos,cre:!!p.data.classement_reel};S.G={};S.gp=null;S.cl.promo=S.prof.promo;
     S.pseudo=p.data.pseudo;S.role=p.data.role;await loadData();await loadMine();
   }catch(e){S.err=e.message||String(e)}
   S.loading=false;render();
