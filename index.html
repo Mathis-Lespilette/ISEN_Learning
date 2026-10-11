@@ -95,6 +95,18 @@ ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;b
 .thumbs img{height:90px;border:1px solid var(--line)}
 .pv{width:100%;height:520px;border:1px solid var(--line);background:#fff;display:block}
 .pvi{max-width:100%;border:1px solid var(--line);display:block}
+.ovl{position:fixed;inset:0;background:rgba(2,5,14,.82);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.mdl{background:var(--panel);border:1px solid var(--line);border-top:2px solid #3b6fd4;padding:14px;width:min(960px,100%);max-height:94vh;overflow:auto}
+.g0>.gh{font-size:16px;margin-bottom:6px}.gh{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between;margin:6px 0}
+.gk{margin-left:14px;padding-left:12px;border-left:1px solid var(--line)}
+.gl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line)}
+.gin{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.gv{width:80px;background:#050a16;border:1px solid var(--line);padding:6px 8px;text-align:right}
+.gc{width:70px;background:#050a16;border:1px solid var(--line);padding:6px 8px}
+.gt{background:#050a16;border:1px solid var(--line);padding:6px 8px;min-width:140px}
+.gctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+label.btn{display:inline-block}
+input[type=number]{background:#050a16;border:1px solid var(--line);padding:6px 8px}
 .lnk.on{color:var(--acc);font-weight:600}
 .adm{border-bottom:1px solid var(--line);padding:12px 0}
 .adm input[type=number]{width:90px;background:#050a16;border:1px solid var(--line);padding:6px 8px}
@@ -145,13 +157,13 @@ ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;b
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 const D={maths:'Maths',physique:'Physique',prog:'Prog',hum:'Humanités et Langues'};
-const V={home:'Accueil',cours:'Cours',exos:'Exos',annales:'Annales',depot:'Dépôt',compte:'Mon compte',admin:'Admin'};
+const V={home:'Accueil',cours:'Cours',exos:'Exos',annales:'Annales',depot:'Dépôt',compte:'Mon compte',classement:'Classement',grille:'Mon tableau de notes',admin:'Admin'};
 const LV=[
   {n:'Guidé',t:'Indications complètes, étape par étape.'},
   {n:'Intermédiaire',t:'Un seul indice, à demander.'},
   {n:'Examen',t:'Aucune aide.'}
 ];
-const S={open:{},y:null,user:null,role:'',pseudo:'',edit:false,loading:false,err:'',msg:'',ko:false,mode:'in',f:null,v:'home',d:'maths',lvl:0,ex:null,cf:false,var:0,gen:null,tab:0,topic:null,ch:null,big:false,N:null,pending:[],admin:false,photos:[],NR:{},RES:{},nst:'',nko:false,docId:null,pvId:null,pu:null,pe:'',corId:null,yr:'',busy:false,adm:{},cfd:null,cfp:null};
+const S={open:{},y:null,user:null,role:'',pseudo:'',edit:false,loading:false,err:'',msg:'',ko:false,mode:'in',f:null,v:'home',d:'maths',lvl:0,ex:null,cf:false,var:0,gen:null,tab:0,topic:null,ch:null,big:false,N:null,pending:[],admin:false,photos:[],NR:{},RES:{},nst:'',nko:false,docId:null,pvId:null,pu:null,pe:'',corId:null,yr:'',busy:false,adm:{},cfd:null,cfp:null,G:{},gs:1,gm:null,prof:{},cl:{tab:'exos',promo:null,a:2,s:1,data:null,loading:false,err:''},admU:null,admUe:''};
 const ST={'':'Pas encore fait',ok:'Réussi',ko:'Raté'};
 const CHAPS={maths:[],physique:[],prog:[],hum:[]};
 const YN={1:'1ère année',2:'2ème année',3:'3ème année',4:'4ème année',5:'5ème année'};
@@ -167,7 +179,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.pk=null;render();if(v==='compte'&&sb&&S.user)acctLoad();if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.pk=null;render();if(v==='compte'&&sb&&S.user)acctLoad();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin')admLoadU();if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -182,6 +194,7 @@ const views={
       <input type="email" id="le" value="${esc(f.e||'')}" placeholder="E-mail" autocomplete="username" aria-label="E-mail">
       <input type="password" id="lp" placeholder="Mot de passe" autocomplete="${up?'new-password':'current-password'}" aria-label="Mot de passe">
       ${up?`<input type="text" id="lu" value="${esc(f.u||'')}" placeholder="Pseudo" aria-label="Pseudo">
+      <input type="number" id="lr" value="${esc(f.r||'')}" placeholder="Promo : année d'entrée à l'école (ex. 2025)" aria-label="Promo" min="2000" max="2100">
       <input type="text" id="lc" value="${esc(f.c||'')}" placeholder="Code d'invitation" aria-label="Code d'invitation">`:''}
       <div class="row" style="margin:0"><button class="btn" onclick="login()">${up?"S'inscrire":'Se connecter'}</button>
       <button class="btn" onclick="S.mode='${up?'in':'up'}';S.msg='';render()">${up?"J'ai déjà un compte":'Créer un compte'}</button></div>
@@ -197,6 +210,8 @@ const views={
     return `<div class="row"><button class="btn" onclick="S.y=null;go('home')">‹ Changer d'année</button></div>
     <h1>Révisions – ${YN[S.y]}</h1>
     ${introHtml()}
+    <div class="cards" style="margin-bottom:14px"><button class="card topic" style="border-left-color:#3b6fd4" onclick="go('grille')"><h2>Mon tableau de notes</h2><p>Tes vraies notes, tes moyennes par semestre et tes fichiers.</p></button>
+    <button class="card topic" style="border-left-color:#3b6fd4" onclick="go('classement')"><h2>Classement de la promo</h2><p>Exos du site ou notes réelles, pour ceux qui l'acceptent.</p></button></div>
     <div class="cards">`+Object.keys(D).map(k=>{const n=CHAPS[k].filter(c=>c.an===S.y).length;return `
       <button class="card topic chap d-${k}" onclick="go('dom','${k}')"><h2>${D[k]}</h2>
       <p>${n?n+' chapitre'+(n>1?'s':''):'Aucun chapitre pour le moment'}</p></button>`}).join('')+'</div>';
@@ -279,6 +294,8 @@ const views={
   },
   partiel(){return S.d==='maths'?partielView():'<div class="empty">Pas encore disponible ici.</div>'},
   compte(){return acctView()},
+  grille(){return grilleView()},
+  classement(){return clsView()},
   annales(){return annHtml()},
   depot(){return depotHtml()},
   admin(){return S.role==='admin'?admHtml():`<h1>Admin</h1><div class="empty">Réservé aux administrateurs.</div>`}
@@ -1059,6 +1076,7 @@ function acctView(){
   <section class="panel"><h3>Mes scores d'exercices</h3>
     <p class="note" style="margin:0 0 10px">Clique sur un domaine pour voir ses modules, puis ses chapitres et ses types d'exercices.</p>${acctTree()}</section>
   ${PT.length?`<section class="panel" style="margin-top:14px"><h3>Historique des partiels blancs</h3><ul class="q">${PT.map(x=>`<li><span>${new Date(x.created_at).toLocaleDateString('fr-FR')}</span><span class="badge">${f1(x.note)} / ${x.max}</span></li>`).join('')}</ul></section>`:''}
+  ${privHtml()}
   <section class="panel" style="margin-top:14px"><h3>Paramètres du compte</h3>
     <div class="plan" style="max-width:380px">
       <div class="note" style="margin:0">E-mail : ${esc(S.user.email||'')} · rôle : ${S.role==='admin'?'admin':'membre'}</div>
@@ -1068,6 +1086,239 @@ function acctView(){
       <div class="row" style="margin:0"><button class="btn" onclick="savePwd()">Changer le mot de passe</button><button class="btn" onclick="logout()">Se déconnecter</button></div>
     </div></section>`;
 }
+/* ===== Tableau de notes (arbre domaine > matière > épreuve, coefs modifiables par l'admin) ===== */
+const sem=(a,s)=>(a-1)*2+s;
+const fx=(v,d=2)=>v==null?'—':Number(v).toFixed(d).replace('.',',');
+const gTrim=s=>String(s==null?'':s).trim();
+const gKids=(N,sm,id)=>N.filter(n=>n.semestre===sm&&(n.parent_id||null)===id).sort((a,b)=>a.ordre-b.ordre);
+function gcalc(N,NO,sm){
+  const R={};
+  const ev=n=>{
+    if(n.feuille){const x=NO[n.id],v=!x?null:x.abs?0:(x.v==null?null:Number(x.v));return R[n.id]={v,nb:v==null?0:1,tot:1}}
+    let s=0,w=0,nb=0,tot=0;
+    for(const c of gKids(N,sm,n.id)){const r=ev(c);tot+=r.tot;nb+=r.nb;if(r.v!=null&&Number(c.coef)>0){s+=Number(c.coef)*r.v;w+=Number(c.coef)}}
+    return R[n.id]={v:w?s/w:null,nb,tot};
+  };
+  let s=0,w=0,nb=0,tot=0;
+  for(const c of gKids(N,sm,null)){const r=ev(c);tot+=r.tot;nb+=r.nb;if(r.v!=null&&Number(c.coef)>0){s+=Number(c.coef)*r.v;w+=Number(c.coef)}}
+  return{R,root:{v:w?s/w:null,nb,tot}};
+}
+async function gridLoad(force){
+  const a=S.y;if(!sb||!S.user||a===null)return;
+  if(S.G[a]&&!force&&!S.G[a].err)return;
+  S.G[a]={loading:true};render();
+  try{
+    const n=await sb.from('grille_noeuds').select('id,annee,semestre,parent_id,titre,coef,feuille,ordre').eq('annee',a).order('ordre');
+    if(n.error)throw n.error;
+    const m=await sb.from('grille_notes').select('noeud_id,valeur,absent,fichier_path,fichier_nom').eq('user_id',S.user.id);
+    if(m.error)throw m.error;
+    const NO={};(m.data||[]).forEach(x=>{NO[x.noeud_id]={v:x.valeur,abs:!!x.absent,path:x.fichier_path,nom:x.fichier_nom}});
+    S.G[a]={nodes:n.data||[],notes:NO};
+    [1,2].forEach(s=>gSync(a,s));
+  }catch(e){S.G[a]={err:e.message||String(e)}}
+  render();
+}
+async function gSync(a,s){
+  try{const G=S.G[a];if(!G||!G.nodes)return;
+    const r=gcalc(G.nodes,G.notes,s).root;
+    if(r.v==null||r.nb<1){await sb.from('moyennes').delete().eq('user_id',S.user.id).eq('annee',a).eq('semestre',s);return}
+    await sb.from('moyennes').upsert({user_id:S.user.id,annee:a,semestre:s,moyenne:Math.round(r.v*100)/100,nb:r.nb,updated_at:new Date().toISOString()},{onConflict:'user_id,annee,semestre'});
+  }catch(e){}
+}
+async function gPut(id,patch){
+  const a=S.y,G=S.G[a],cur=Object.assign({v:null,abs:false,path:null,nom:null},G.notes[id]||{},patch);
+  let r;
+  if(cur.v==null&&!cur.abs&&!cur.path){
+    r=await sb.from('grille_notes').delete().eq('user_id',S.user.id).eq('noeud_id',id).select();
+    if(r.error)return flash(fr(r.error.message),1);
+    delete G.notes[id];
+  }else{
+    r=await sb.from('grille_notes').upsert({user_id:S.user.id,noeud_id:id,valeur:cur.v,absent:cur.abs,fichier_path:cur.path,fichier_nom:cur.nom},{onConflict:'user_id,noeud_id'}).select();
+    if(refused(r))return flash(refused(r),1);
+    G.notes[id]=cur;
+  }
+  gSync(a,S.gs);S.msg='';render();
+}
+function gSet(id,val){
+  const t=gTrim(val).replace(',','.');
+  if(t==='')return gPut(id,{v:null});
+  const v=Number(t);if(!isFinite(v)||v<0||v>20)return flash('La note doit être comprise entre 0 et 20.',1);
+  return gPut(id,{v:Math.round(v*100)/100,abs:false});
+}
+const gAbs=(id,on)=>gPut(id,on?{abs:true,v:null}:{abs:false});
+async function gFile(id,files){
+  const f=files&&files[0];if(!f)return;
+  if(!/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type))return flash('Fichier refusé : PDF, JPEG, PNG ou WebP uniquement.',1);
+  if(f.size>10*1048576)return flash('Fichier trop lourd (10 Mo maximum).',1);
+  S.msg='Envoi du fichier…';S.ko=false;render();
+  const path=S.user.id+'/'+uid()+'-'+clean(f.name),old=(S.G[S.y].notes[id]||{}).path;
+  const u=await sb.storage.from('perso').upload(path,f,{contentType:f.type,upsert:false});
+  if(u.error)return flash('Envoi impossible : '+fr(u.error.message),1);
+  await gPut(id,{path,nom:f.name.slice(0,120)});
+  if(old)sb.storage.from('perso').remove([old]);
+}
+async function gDelFile(id){
+  if(S.cff!==id){S.cff=id;render();return}
+  S.cff=null;const old=(S.G[S.y].notes[id]||{}).path;
+  await gPut(id,{path:null,nom:null});
+  if(old)sb.storage.from('perso').remove([old]);
+}
+async function gView(id){
+  const x=S.G[S.y].notes[id];if(!x||!x.path)return;
+  const nm=x.nom||'Fichier',pdf=/\.pdf$/i.test(x.path)||/\.pdf$/i.test(nm);
+  S.gm={nom:nm,pdf,url:null,err:''};render();
+  try{const u=await signed('perso',x.path);if(S.gm&&S.gm.nom===nm){S.gm.url=u}}
+  catch(e){if(S.gm)S.gm.err=e.message||'Erreur de chargement'}
+  render();
+}
+const gClose=()=>{S.gm=null;render()};
+const gModal=()=>S.gm?`<div class="ovl" onclick="if(event.target===this)gClose()" role="dialog" aria-modal="true"><div class="mdl">
+  <div class="row"><b style="flex:1">${esc(S.gm.nom)}</b><button class="btn" onclick="gClose()">Fermer</button></div>
+  ${S.gm.err?`<div class="empty bad">Aperçu impossible : ${esc(S.gm.err)}</div>`:!S.gm.url?'<div class="empty">Chargement…</div>'
+    :S.gm.pdf?`<iframe class="pv" style="height:70vh" src="${esc(S.gm.url)}" title="${esc(S.gm.nom)}"></iframe>`:`<img class="pvi" src="${esc(S.gm.url)}" alt="${esc(S.gm.nom)}">`}</div></div>`:'';
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.gm)gClose()});
+/* édition de la grille (admin) */
+async function gAdd(pid,feuille){
+  const a=S.y,N=S.G[a].nodes,sib=gKids(N,S.gs,pid||null),o=sib.length?Math.max(...sib.map(x=>x.ordre))+1:1;
+  const r=await sb.from('grille_noeuds').insert({annee:a,semestre:S.gs,parent_id:pid||null,titre:feuille?'Nouvelle épreuve':pid?'Nouvelle matière':'Nouveau domaine',coef:0,feuille:!!feuille,ordre:o}).select();
+  if(refused(r))return flash(refused(r),1);
+  S.G[a].nodes.push(r.data[0]);S.msg='';render();
+}
+async function gEdit(id,k,v){
+  const a=S.y,n=S.G[a].nodes.find(x=>x.id===id);if(!n)return;
+  let val;
+  if(k==='titre'){val=gTrim(v);if(!val||val.length>80)return flash('Titre : 1 à 80 caractères.',1)}
+  else{val=Number(gTrim(v).replace(',','.'));if(!isFinite(val)||val<0)return flash('Le coefficient doit être un nombre positif.',1)}
+  const r=await sb.from('grille_noeuds').update({[k]:val}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  n[k]=val;gSync(a,S.gs);S.msg='';render();
+}
+async function gMove(id,dir){
+  const a=S.y,N=S.G[a].nodes,n=N.find(x=>x.id===id),sib=gKids(N,n.semestre,n.parent_id||null),i=sib.findIndex(x=>x.id===id),o=sib[i+dir];
+  if(!o)return;
+  const r1=await sb.from('grille_noeuds').update({ordre:o.ordre}).eq('id',n.id).select(),r2=await sb.from('grille_noeuds').update({ordre:n.ordre}).eq('id',o.id).select();
+  if(refused(r1)||refused(r2))return flash(refused(r1)||refused(r2),1);
+  const t=n.ordre;n.ordre=o.ordre;o.ordre=t;render();
+}
+async function gDel(id){
+  if(S.cgd!==id){S.cgd=id;render();return}
+  S.cgd=null;const a=S.y;
+  const r=await sb.from('grille_noeuds').delete().eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await gridLoad(true);flash('Ligne supprimée.');
+}
+function gNode(n,R,depth,siblingsSum){
+  const r=R[n.id]||{},N=S.G[S.y].nodes,NO=S.G[S.y].notes,E=ed();
+  const sib=gKids(N,S.gs,n.parent_id||null),i=sib.findIndex(x=>x.id===n.id);
+  const ctl=E?`<span class="gctl"><input type="text" class="gt" value="${esc(n.titre)}" maxlength="80" aria-label="Titre" onchange="gEdit('${n.id}','titre',this.value)">
+    <label>coef <input type="number" class="gc" min="0" step="any" value="${esc(n.coef)}" aria-label="Coefficient" onchange="gEdit('${n.id}','coef',this.value)"></label>
+    <button class="btn" ${i<=0?'disabled':''} onclick="gMove('${n.id}',-1)" aria-label="Monter">▲</button><button class="btn" ${i>=sib.length-1?'disabled':''} onclick="gMove('${n.id}',1)" aria-label="Descendre">▼</button>
+    <button class="btn" onclick="gDel('${n.id}')">${S.cgd===n.id?'Confirmer la suppression':'✕'}</button></span>`:'';
+  if(n.feuille){
+    const x=NO[n.id]||{};
+    return `<div class="gl"><span class="glt">${E?ctl:`${esc(n.titre)} <small class="note" style="margin:0">coef ${esc(n.coef)}</small>`}</span>
+      <span class="gin"><input type="text" inputmode="decimal" class="gv" value="${x.abs?'':x.v==null?'':esc(String(x.v).replace('.',','))}" placeholder="/20" ${x.abs?'disabled':''} aria-label="Note de ${esc(n.titre)}" onchange="gSet('${n.id}',this.value)">
+      <label class="note" style="margin:0"><input type="checkbox" ${x.abs?'checked':''} onchange="gAbs('${n.id}',this.checked)"> abs</label>
+      ${x.path?`<button class="btn" onclick="gView('${n.id}')">Voir le fichier</button><button class="btn" onclick="gDelFile('${n.id}')" aria-label="Retirer le fichier">${S.cff===n.id?'Confirmer':'✕'}</button>`
+        :`<label class="btn">Joindre un fichier<input type="file" hidden accept="application/pdf,image/jpeg,image/png,image/webp" onchange="gFile('${n.id}',this.files)"></label>`}</span></div>`;
+  }
+  const kids=gKids(N,S.gs,n.id),tot=kids.reduce((s,c)=>s+Number(c.coef),0);
+  return `<div class="gg${depth===0?' g0':''}"><div class="gh">${E?ctl:`<b>${esc(n.titre)}</b> <small class="note" style="margin:0">coef ${esc(n.coef)}</small>`}
+    <span class="badge">${r.v==null?'—':'moyenne '+fx(r.v)+' / 20'}</span></div>
+    ${E&&kids.length&&Math.abs(tot-100)>0.001&&depth>0?`<div class="note bad" style="margin:2px 0">Somme des coefs : ${tot} (normalement 100)</div>`:''}
+    <div class="gk">${kids.map(c=>gNode(c,R,depth+1)).join('')}</div>
+    ${E?`<div class="row" style="margin:6px 0 0"><button class="btn" onclick="gAdd('${n.id}',true)">+ épreuve</button><button class="btn" onclick="gAdd('${n.id}',false)">+ sous-matière</button></div>`:''}</div>`;
+}
+function grilleView(){
+  const a=S.y,G=S.G[a],head=`<div class="row"><button class="btn" onclick="go('home')">‹ ${YN[a]}</button></div><h1>Mon tableau de notes – ${YN[a]}</h1>`;
+  if(!G||G.loading)return head+'<div class="empty">Chargement…</div>';
+  if(G.err)return head+`<section class="panel"><p class="bad">Impossible de charger le tableau : ${esc(G.err)}</p><p class="note">As-tu lancé « maj-notes-classement.sql » dans Supabase ?</p><div class="row"><button class="btn" onclick="gridLoad(true)">Réessayer</button></div></section>`;
+  const sm=S.gs,C=gcalc(G.nodes,G.notes,sm),roots=gKids(G.nodes,sm,null),yr=Object.values(CHAPS).flat().filter(c=>c.an===a).flatMap(c=>c.ty),ag=agg(yr);
+  return head+`<p class="lead">Note tes vraies notes (sur 20) : les moyennes se calculent toutes seules avec les coefficients. Une case vide est ignorée (moyenne provisoire), « abs » compte 0. Tu peux joindre le sujet, la copie ou le relevé à chaque note ; tout reste privé.</p>
+  <div class="tabs" style="--c:#3b6fd4">${[1,2].map(s=>`<button class="tab${s===sm?' on':''}" onclick="S.gs=${s};render()">Semestre ${sem(a,s)}</button>`).join('')}</div>
+  <div class="cards" style="margin-bottom:14px">
+    <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Moyenne du semestre ${sem(a,sm)}</p><div class="big">${fx(C.root.v)}${C.root.v==null?'':' / 20'}</div>
+      <p style="margin:0">${C.root.nb} note${C.root.nb>1?'s':''} saisie${C.root.nb>1?'s':''} sur ${C.root.tot}${C.root.nb<C.root.tot&&C.root.v!=null?' (provisoire)':''}</p></div>
+    <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Avancement des exos – ${YN[a]}</p><div class="big">${ag.ok} / ${ag.n}</div><div class="bar"><i style="width:${pct(ag.ok,ag.n)}%"></i></div><p style="margin:6px 0 0">${pct(ag.ok,ag.n)} % réussis</p></div>
+  </div>
+  ${roots.length?roots.map(n=>`<section class="panel" style="margin-bottom:14px">${gNode(n,C.R,0)}</section>`).join(''):'<div class="empty">Aucune ligne dans ce semestre pour le moment.'+(ed()?'':' L\'admin peut composer le tableau (mode édition).')+'</div>'}
+  ${ed()?`<div class="row"><button class="btn" onclick="gAdd(null,false)">+ domaine</button></div>`:''}`;
+}
+/* ===== Classements par promo ===== */
+async function clsLoad(){
+  const c=S.cl,pr=Number(c.promo);
+  if(!(pr>=2000&&pr<=2100)){c.data=null;c.err='';render();return}
+  c.loading=true;c.err='';render();
+  try{
+    const r=c.tab==='exos'?await sb.rpc('classement_exos',{p_promo:pr}):await sb.rpc('classement_reel',{p_promo:pr,p_annee:c.a,p_sem:c.s});
+    if(r.error)throw r.error;c.data=r.data||[];
+  }catch(e){c.data=null;c.err=e.message||String(e)}
+  c.loading=false;render();
+}
+function clsSet(k,v){S.cl[k]=(k==='tab'?v:Number(v));clsLoad()}
+function clsView(){
+  const c=S.cl,pf=S.prof||{},mine=c.tab==='exos'?pf.cex:pf.cre;
+  const tabs=`<div class="tabs" style="--c:#3b6fd4"><button class="tab${c.tab==='exos'?' on':''}" onclick="clsSet('tab','exos')">Classement exos du site</button><button class="tab${c.tab==='reel'?' on':''}" onclick="clsSet('tab','reel')">Classement notes réelles</button></div>`;
+  const opt=(n,sel)=>[...Array(n)].map((_,i)=>`<option value="${i+1}"${i+1===sel?' selected':''}>${i+1}</option>`);
+  const ctl=`<div class="row"><label class="note" style="margin:0">Promo <input type="number" min="2000" max="2100" value="${esc(c.promo||'')}" style="width:90px" onchange="clsSet('promo',this.value)"></label>
+    ${c.tab==='reel'?`<label class="note" style="margin:0">Année <select onchange="clsSet('a',this.value)">${[1,2,3,4,5].map(y=>`<option value="${y}"${y===c.a?' selected':''}>${YN[y]}</option>`).join('')}</select></label>
+    <label class="note" style="margin:0">Semestre <select onchange="clsSet('s',this.value)">${[1,2].map(s=>`<option value="${s}"${s===c.s?' selected':''}>${sem(c.a,s)}</option>`).join('')}</select></label>`:''}</div>`;
+  let body;
+  if(!(Number(c.promo)>=2000))body='<div class="empty">Renseigne ta promo (dans « Mon compte ») pour voir le classement.</div>';
+  else if(c.loading)body='<div class="empty">Chargement…</div>';
+  else if(c.err)body=`<p class="bad">Classement indisponible : ${esc(c.err)}</p><p class="note">As-tu lancé « maj-notes-classement.sql » ?</p>`;
+  else if(!c.data)body='<div class="empty">…</div>';
+  else if(!c.data.length)body=`<div class="empty">Personne n'apparaît encore dans ce classement pour la promo ${esc(c.promo)}.${c.tab==='exos'?' (Il faut au moins 10 exercices tentés.)':' (Il faut au moins 3 notes saisies.)'}</div>`;
+  else body='<ul class="q">'+c.data.map((x,i)=>`<li${x.pseudo===S.pseudo?' style="color:var(--acc,#3b6fd4)"':''}><span>${i+1}. ${esc(x.pseudo)}</span><span class="badge">${c.tab==='exos'?`${x.reussis} réussis · ${x.tentes?Math.round(x.reussis/x.tentes*100):0} %`:`${fx(x.moyenne)} / 20 · ${x.nb} notes`}</span></li>`).join('')+'</ul>';
+  return `<h1>Classement</h1><p class="lead">${c.tab==='exos'?"Classement « pour le fun » : nombre d'exercices réussis sur le site.":"Classement avec les vraies notes saisies dans « Mon tableau de notes »."} Seules les personnes qui l'ont accepté (dans « Mon compte ») apparaissent, avec leur seul pseudo.</p>
+  ${tabs}${ctl}<section class="panel">${body}</section>
+  <p class="note">${mine?'Tu apparais dans ce classement.':'Tu n\'apparais pas dans ce classement (option désactivée dans « Mon compte »).'}</p>`;
+}
+/* ===== Profil : promo & visibilité ===== */
+async function savePriv(){
+  const raw=$('apr').value.trim(),p=raw===''?null:Number(raw);
+  if(p!==null&&!(Number.isInteger(p)&&p>=2000&&p<=2100))return flash("Promo : une année entre 2000 et 2100 (année d'entrée à l'école).",1);
+  const row={classement_exos:$('ace').checked,classement_reel:$('acr').checked};
+  if(!S.prof.verif)row.promo=p;
+  const r=await sb.from('profiles').update(row).eq('id',S.user.id).select('promo,promo_verifiee,classement_exos,classement_reel');
+  if(refused(r))return flash(refused(r)+' (colonnes ajoutées par maj-notes-classement.sql ?)',1);
+  const x=r.data[0];S.prof={promo:x.promo,verif:!!x.promo_verifiee,cex:!!x.classement_exos,cre:!!x.classement_reel};
+  if(!S.cl.promo)S.cl.promo=x.promo;
+  flash('Réglages enregistrés.');
+}
+const privHtml=()=>{const p=S.prof||{};return `<section class="panel" style="margin-top:14px"><h3>Promo et classements</h3>
+  <div class="plan" style="max-width:420px">
+    <label class="note" style="margin:0">Promo (année d'entrée à l'école) ${p.verif?'<span class="badge">vérifiée par l\'admin</span>':p.promo?'<span class="badge">à vérifier par l\'admin</span>':''}
+      <input type="number" id="apr" min="2000" max="2100" value="${esc(p.promo||'')}" ${p.verif?'disabled':''} style="width:100%;margin-top:4px"></label>
+    <label><input type="checkbox" id="ace" ${p.cex?'checked':''}> Apparaître dans le classement public des exos</label>
+    <label><input type="checkbox" id="acr" ${p.cre?'checked':''}> Apparaître dans le classement public des notes réelles</label>
+    <p class="note" style="margin:0">Décoché = privé. Seul ton pseudo est affiché, jamais le détail de tes résultats ni tes fichiers.</p>
+    <div class="row" style="margin:0"><button class="btn" onclick="savePriv()">Enregistrer</button></div></div></section>`};
+/* ===== Admin : comptes et promos ===== */
+async function admLoadU(){
+  const r=await sb.from('profiles').select('id,pseudo,role,promo,promo_verifiee,created_at').order('created_at');
+  S.admU=r.error?null:(r.data||[]);S.admUe=r.error?r.error.message:'';if(S.v==='admin')render();
+}
+async function admSaveU(id){
+  const raw=$('au_'+id).value.trim(),p=raw===''?null:Number(raw);
+  if(p!==null&&!(Number.isInteger(p)&&p>=2000&&p<=2100))return flash('Promo invalide (2000–2100).',1);
+  const v=$('av_'+id).checked&&p!==null;
+  const r=await sb.from('profiles').update({promo:p,promo_verifiee:v}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  const u=S.admU.find(x=>x.id===id);u.promo=p;u.promo_verifiee=v;flash('Compte mis à jour.');
+}
+const admUsers=()=>{
+  if(S.admUe)return `<section class="panel"><h3>Comptes et promos</h3><p class="bad">${esc(S.admUe)}</p></section>`;
+  if(!S.admU)return `<section class="panel"><h3>Comptes et promos</h3><div class="empty">Chargement…</div></section>`;
+  const L=S.admU.slice().sort((a,b)=>(a.promo_verifiee-b.promo_verifiee)||String(a.pseudo).localeCompare(b.pseudo));
+  return `<section class="panel" style="margin-bottom:14px"><h3>Comptes et promos (${L.length})</h3>
+    <p class="note" style="margin:0 0 8px">Vérifie la promo de chaque compte. Coche « vérifiée » : le membre ne pourra plus la modifier.</p>
+    <ul class="q">${L.map(u=>`<li><span>${esc(u.pseudo)} <span class="note" style="margin:0">${u.role==='admin'?'admin':''}</span></span>
+    <span class="row" style="margin:0"><input type="number" id="au_${u.id}" value="${esc(u.promo||'')}" placeholder="promo" style="width:90px" aria-label="Promo de ${esc(u.pseudo)}">
+    <label class="note" style="margin:0"><input type="checkbox" id="av_${u.id}" ${u.promo_verifiee?'checked':''}> vérifiée</label>
+    <button class="btn" onclick="admSaveU('${u.id}')">Enregistrer</button></span></li>`).join('')}</ul></section>`;
+};
+
 const tid=()=>CHAP().ty[S.topic].id;
 function getR(){return S.RES[tid()]||{}}
 async function setR(n,k){
@@ -1096,15 +1347,15 @@ function topicList(){
 function render(){
   const app=$('app');
   if(!S.user)S.v='home';
-  if(['dom','chap','cours','exos','annales','partiel'].includes(S.v)&&S.y===null)S.v='home';
+  if(['dom','chap','cours','exos','annales','partiel','grille'].includes(S.v)&&S.y===null)S.v='home';
   if(['chap','cours','exos','annales'].includes(S.v)&&!(CHAPS[S.d]&&CHAPS[S.d][S.ch]))S.v='dom';
   app.className='d-'+S.d;
   const inD=['dom','chap','cours','exos','annales','partiel'].includes(S.v),inC=['chap','cours','exos','annales'].includes(S.v);
   app.dataset.k=S.v==='cours'?'cours':(S.v==='exos'||S.v==='partiel')?'exos':(S.v==='dom'||S.v==='chap')?'dom':'other';
-  $('path').textContent=['depot','compte','admin'].includes(S.v)?'~/'+S.v+'$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+'$';
+  $('path').textContent=['depot','compte','admin','classement'].includes(S.v)?'~/'+S.v+'$':S.v==='grille'?'~/a'+S.y+'/notes$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+'$';
   $('nav').innerHTML=S.user?`<button class="${S.v==='home'?'on':''}" onclick="go('home')">Accueil${S.y!==null?' · '+YN[S.y]:''}</button>`
     +(S.y===null?[]:Object.keys(D)).map(k=>`<button class="dn d-${k}${inD&&S.d===k?' on':''}" onclick="go('dom','${k}')">${D[k]}</button>`).join('')
-    +['depot','compte','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}</button>`).join(''):'';
+    +['classement','depot','compte','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}</button>`).join(''):'';
   $('who').innerHTML=S.user?`<div>${esc(S.pseudo)} (${S.role==='admin'?'admin':'membre'})</div>`
     +(S.role==='admin'?`<button class="btn" aria-pressed="${S.edit}" onclick="S.edit=!S.edit;render()">Mode édition : ${S.edit?'oui':'non'}</button>`:'')
     +`<button class="btn" onclick="logout()">Se déconnecter</button>`:'';
@@ -1113,7 +1364,7 @@ function render(){
   else if(S.loading)html='<div class="empty">Chargement des données…</div>';
   else if(S.err)html=`<section class="panel"><p class="bad">Impossible de charger les données : ${esc(S.err)}</p><div class="row"><button class="btn" onclick="enter(S.user)">Réessayer</button></div></section>`;
   else html=views[S.v]();
-  $('view').innerHTML=(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html;
+  $('view').innerHTML=(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html+gModal();
   bindNotes();bindGen();ptBind();mathRender();
 }
 /* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
@@ -1152,19 +1403,22 @@ async function loadData(){
 async function enter(user){
   S.user=user;S.loading=true;S.err='';render();
   try{
-    const p=await sb.from('profiles').select('pseudo,role').eq('id',user.id).single();
+    let p=await sb.from('profiles').select('pseudo,role,promo,promo_verifiee,classement_exos,classement_reel').eq('id',user.id).single();
+    if(p.error)p=await sb.from('profiles').select('pseudo,role').eq('id',user.id).single();
     if(p.error)throw p.error;
+    S.prof={promo:p.data.promo||null,verif:!!p.data.promo_verifiee,cex:!!p.data.classement_exos,cre:!!p.data.classement_reel};S.G={};S.cl.promo=S.prof.promo;
     S.pseudo=p.data.pseudo;S.role=p.data.role;await loadData();await loadMine();
   }catch(e){S.err=e.message||String(e)}
   S.loading=false;render();
 }
 async function login(){
   const up=S.mode==='up',v=id=>($(id)?$(id).value:'').trim();
-  S.f={e:v('le'),u:v('lu'),c:v('lc')};
+  S.f={e:v('le'),u:v('lu'),c:v('lc'),r:v('lr')};
   const pw=$('lp').value;
+  if(up&&!(Number.isInteger(Number(S.f.r))&&Number(S.f.r)>=2000&&Number(S.f.r)<=2100))return flash("Indique ta promo : l'année d'entrée à l'école (ex. 2025).",1);
   if(!S.f.e||!pw)return flash('Entre ton e-mail et ton mot de passe.',1);
   if(up&&!/@student\.junia\.com$/i.test(S.f.e))return flash("Utilise ton adresse de l'école (…@student.junia.com).",1);
-  const r=up?await sb.auth.signUp({email:S.f.e,password:pw,options:{data:Object.assign({code:S.f.c},S.f.u?{pseudo:S.f.u}:{})}})
+  const r=up?await sb.auth.signUp({email:S.f.e,password:pw,options:{data:Object.assign({code:S.f.c,promo:S.f.r},S.f.u?{pseudo:S.f.u}:{})}})
             :await sb.auth.signInWithPassword({email:S.f.e,password:pw});
   if(r.error)return flash(fr(r.error.message),1);
   if(!r.data.session)return flash('Compte créé : confirme ton e-mail, puis connecte-toi.');
@@ -1449,7 +1703,7 @@ function admHtml(){
       ${a.ty==='annale'?`<input type="number" value="${esc(a.y)}" placeholder="Année" aria-label="Année" oninput="admSet('${d.id}','y',this.value)">`:''}
       ${a.ty==='correction'?`<select aria-label="Annale" onchange="admSet('${d.id}','a',this.value,1)"><option value="">— annale —</option>${ann.map(x=>`<option value="${x.id}"${x.id===a.a?' selected':''}>${esc(x.titre)}${x.annee?' ('+x.annee+')':''}</option>`).join('')}</select>`:''}</div>
       <div class="row" style="margin:0"><button class="btn" onclick="admPublish('${d.id}')">Publier</button><button class="btn" onclick="admReject('${d.id}')">Rejeter</button></div></div>`};
-  return `<h1>Admin – file de tri</h1><p class="lead">Range chaque dépôt dans un chapitre, puis publie-le. Il devient alors visible par toute la promo.</p>
+  return `${admUsers()}<h1>Admin – file de tri</h1><p class="lead">Range chaque dépôt dans un chapitre, puis publie-le. Il devient alors visible par toute la promo.</p>
   <section class="panel"><h3>En attente (${P.length})</h3>${P.length?P.map(row).join(''):'<div class="empty">Rien à trier pour le moment.</div>'}
     ${pd&&pd.statut==='en_attente'?'<h3 style="margin-top:14px">Aperçu</h3>'+pvHtml(pd):''}</section>
   <section class="panel" style="margin-top:14px"><h3>Publiés et rejetés (${O.length})</h3>${O.length?'<ul class="q">'+O.map(d=>`<li><span>${esc(d.titre)} <span class="note" style="margin:0">${TY[d.type]} – ${STD[d.statut]}</span></span>
