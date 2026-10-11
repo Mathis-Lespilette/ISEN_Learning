@@ -163,12 +163,12 @@ const LV=[
   {n:'Intermédiaire',t:'Un seul indice, à demander.'},
   {n:'Examen',t:'Aucune aide.'}
 ];
-const S={open:{},y:null,user:null,role:'',pseudo:'',edit:false,loading:false,err:'',msg:'',ko:false,mode:'in',f:null,v:'home',d:'maths',lvl:0,ex:null,cf:false,var:0,gen:null,tab:0,topic:null,ch:null,big:false,N:null,pending:[],admin:false,photos:[],NR:{},RES:{},nst:'',nko:false,docId:null,pvId:null,pu:null,pe:'',corId:null,yr:'',busy:false,adm:{},cfd:null,cfp:null,G:{},gs:1,gm:null,prof:{},cl:{tab:'exos',promo:null,a:2,s:1,data:null,loading:false,err:''},admU:null,admUe:''};
+const S={open:{},y:null,user:null,role:'',pseudo:'',edit:false,loading:false,err:'',msg:'',ko:false,mode:'in',f:null,v:'home',d:'maths',lvl:0,ex:null,cf:false,var:0,gen:null,tab:0,topic:null,ch:null,big:false,N:null,pending:[],admin:false,photos:[],NR:{},RES:{},nst:'',nko:false,docId:null,pvId:null,pu:null,pe:'',corId:null,yr:'',busy:false,adm:{},cfd:null,cfp:null,G:{},gs:1,gm:null,prof:{},cl:{tab:'exos',promo:null,a:2,s:1,data:null,loading:false,err:''},admU:null,admUe:'',pa:{},paE:'',at:'depots',ann:null,cn:null,admP:[],acc:null,admA:null};
 const ST={'':'Pas encore fait',ok:'Réussi',ko:'Raté'};
 const CHAPS={maths:[],physique:[],prog:[],hum:[]};
 const YN={1:'1ère année',2:'2ème année',3:'3ème année',4:'4ème année',5:'5ème année'};
 const MODS=[];
-const yMods=()=>MODS.filter(m=>m.matiere===S.d&&m.an===S.y).sort((a,b)=>a.num-b.num);
+const yMods=()=>MODS.filter(m=>m.matiere===S.d&&m.an===S.y).sort((a,b)=>a.num-b.num||b.pr-a.pr);
 const CHAP=()=>CHAPS[S.d][S.ch],nk=()=>S.user.id+':'+CHAP().id;
 const NX=()=>CHAP().ty[S.topic].nb_exercices,rk=()=>'r:'+S.user.id+':'+CHAP().ty[S.topic].id;
 const slug=t=>t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
@@ -179,7 +179,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.pk=null;render();if(v==='compte'&&sb&&S.user)acctLoad();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin')admLoadU();if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.pk=null;render();if(v==='compte'&&sb&&S.user)acctLoad();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){admLoadU()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -204,9 +204,11 @@ const views={
     if(S.y===null)return `<h1>Révisions</h1>
     ${introHtml()}
     <h2 class="sec">Choisis ton année</h2>
-    <div class="cards">`+[1,2,3,4,5].map(y=>{const n=Object.values(CHAPS).flat().filter(c=>c.an===y).length;return `
+    <div class="cards">`+[1,2,3,4,5].map(y=>{const n=Object.values(CHAPS).flat().filter(c=>c.an===y).length;return yOK(y)?`
       <button class="card topic" style="border-left-color:#3b6fd4" onclick="S.y=${y};go('home')"><h2>${YN[y]}</h2>
-      <p>${n?n+' chapitre'+(n>1?'s':''):'Bientôt'}</p></button>`}).join('')+'</div>';
+      <p>${n?n+' chapitre'+(n>1?'s':''):'Bientôt'}</p></button>`:`
+      <div class="card" style="border-left-color:#3b4a6e;opacity:.55"><h2>${YN[y]}</h2><p>Non ouvert à ta promo.</p></div>`}).join('')+'</div>'
+      +(S.ann&&!S.ann.length&&S.role!=='admin'?`<p class="note" style="margin-top:12px">Renseigne ta promo dans <a href="#" onclick="go('compte');return false" style="color:inherit">Mon compte</a> pour accéder aux cours.</p>`:'');
     return `<div class="row"><button class="btn" onclick="S.y=null;go('home')">‹ Changer d'année</button></div>
     <h1>Révisions – ${YN[S.y]}</h1>
     ${introHtml()}
@@ -220,7 +222,7 @@ const views={
     const all=CHAPS[S.d].map((c,i)=>({c,i})),orph=S.y===2?all.filter(x=>!x.c.mid):[],mods=yMods();
     const cards=l=>l.length?'<div class="cards">'+l.map(({c,i})=>`<button class="card topic chap" onclick="S.ch=${i};go('chap')"><h2>${c.n}</h2><p>Cours, exos et annales.</p></button>`).join('')+'</div>'
       :'<div class="empty">Aucun chapitre dans ce module pour le moment.</div>';
-    const blk=m=>`<section class="mod"><h2 class="mh">Module ${m.num}${m.raw?` <small>${esc(m.raw)}</small>`:''}</h2>${ed()?modEdit(m):''}${S.d==='maths'&&S.y===2&&m.num===3?partielCard():''}${cards(all.filter(x=>x.c.mid===m.id))}${ed()?addChapHtml(m.id):''}</section>`;
+    const blk=m=>`<section class="mod"><h2 class="mh">Module ${m.num}${m.raw?` <small>${esc(m.raw)}</small>`:''} <span class="badge">promo ${m.pr}</span></h2>${ed()?modEdit(m):''}${S.d==='maths'&&S.y===2&&m.num===3&&m.pr===2025?partielCard():''}${cards(all.filter(x=>x.c.mid===m.id))}${ed()?addChapHtml(m.id):''}</section>`;
     return `<div class="row"><button class="btn" onclick="go('home')">‹ ${YN[S.y]}</button></div>
     <h1>${D[S.d]} – ${YN[S.y]}</h1>
     <p class="lead">Choisis un module, puis un chapitre pour accéder à son cours, ses exos et ses annales.</p>${addModHtml()}`+
@@ -1033,7 +1035,7 @@ function partielView(){
 /* ===== Mon compte : profil et progression (domaine > module > chapitre > type d'exercice) ===== */
 const agg=ts=>{let ok=0,ko=0,n=0;for(const t of ts){const R=S.RES[t.id]||{},nb=t.nb_exercices||0;n+=nb;for(let i=1;i<=nb;i++){const r=R[i];if(r&&r.s==='ok')ok++;else if(r&&r.s==='ko')ko++}}return{ok,ko,n}};
 const pct=(a,b)=>b?Math.round(a/b*100):0;
-const MLAB=m=>`A${m.an} · Module ${m.num}${m.raw?' – '+esc(m.raw):''}`;
+const MLAB=m=>`A${m.an} · Module ${m.num}${m.raw?' – '+esc(m.raw):''}${m.pr&&m.pr!==(S.prof&&S.prof.promo)?' · promo '+m.pr:''}`;
 function tg(k){S.open[k]=!S.open[k];render()}
 function aRow(key,label,a,kids,body){
   const open=!!S.open[key],p=pct(a.ok,a.n),t=a.ok+a.ko;
@@ -1282,7 +1284,7 @@ function clsView(){
   const c=S.cl,pf=S.prof||{},mine=c.tab==='exos'?pf.cex:pf.cre;
   const tabs=`<div class="tabs" style="--c:#3b6fd4"><button class="tab${c.tab==='exos'?' on':''}" onclick="clsSet('tab','exos')">Classement exos du site</button><button class="tab${c.tab==='reel'?' on':''}" onclick="clsSet('tab','reel')">Classement notes réelles</button></div>`;
   const opt=(n,sel)=>[...Array(n)].map((_,i)=>`<option value="${i+1}"${i+1===sel?' selected':''}>${i+1}</option>`);
-  const ctl=`<div class="row"><label class="note" style="margin:0">Promo <input type="number" min="2000" max="2100" value="${esc(c.promo||'')}" style="width:90px" onchange="clsSet('promo',this.value)"></label>
+  const ctl=`<div class="row"><label class="note" style="margin:0">Promo <input type="number" min="2000" max="2100" value="${esc(c.promo||'')}" style="width:90px" ${S.role==='admin'?'':'disabled'} onchange="clsSet('promo',this.value)"></label>
     ${c.tab==='reel'?`<label class="note" style="margin:0">Année <select onchange="clsSet('a',this.value)">${[1,2,3,4,5].map(y=>`<option value="${y}"${y===c.a?' selected':''}>${YN[y]}</option>`).join('')}</select></label>
     <label class="note" style="margin:0">Semestre <select onchange="clsSet('s',this.value)">${[1,2].map(s=>`<option value="${s}"${s===c.s?' selected':''}>${sem(c.a,s)}</option>`).join('')}</select></label>`:''}</div>`;
   let body;
@@ -1306,7 +1308,7 @@ async function savePriv(){
   if(refused(r))return flash(refused(r)+' (colonnes ajoutées par maj-notes-classement.sql ?)',1);
   const x=r.data[0];S.prof={promo:x.promo,verif:!!x.promo_verifiee,cex:!!x.classement_exos,cre:!!x.classement_reel};
   if(!S.cl.promo)S.cl.promo=x.promo;
-  flash('Réglages enregistrés.');
+  await enter(S.user);S.v='compte';flash('Réglages enregistrés.');
 }
 const privHtml=()=>{const p=S.prof||{};return `<section class="panel" style="margin-top:14px"><h3>Promo et classements</h3>
   <div class="plan" style="max-width:420px">
@@ -1314,13 +1316,10 @@ const privHtml=()=>{const p=S.prof||{};return `<section class="panel" style="mar
       <input type="number" id="apr" min="2000" max="2100" value="${esc(p.promo||'')}" ${p.verif?'disabled':''} style="width:100%;margin-top:4px"></label>
     <label><input type="checkbox" id="ace" ${p.cex?'checked':''}> Apparaître dans le classement public des exos</label>
     <label><input type="checkbox" id="acr" ${p.cre?'checked':''}> Apparaître dans le classement public des notes réelles</label>
+    <p class="note" style="margin:0">Années accessibles : ${S.role==='admin'?'toutes (admin)':S.ann?(S.ann.length?S.ann.map(y=>YN[y]).join(', '):'aucune (promo à renseigner)'):'—'}.</p>
     <p class="note" style="margin:0">Décoché = privé. Seul ton pseudo est affiché, jamais le détail de tes résultats ni tes fichiers.</p>
     <div class="row" style="margin:0"><button class="btn" onclick="savePriv()">Enregistrer</button></div></div></section>`};
 /* ===== Admin : comptes et promos ===== */
-async function admLoadU(){
-  const r=await sb.from('profiles').select('id,pseudo,role,promo,promo_verifiee,created_at').order('created_at');
-  S.admU=r.error?null:(r.data||[]);S.admUe=r.error?r.error.message:'';if(S.v==='admin')render();
-}
 async function admSaveU(id){
   const raw=$('au_'+id).value.trim(),p=raw===''?null:Number(raw);
   if(p!==null&&!(Number.isInteger(p)&&p>=2000&&p<=2100))return flash('Promo invalide (2000–2100).',1);
@@ -1329,17 +1328,7 @@ async function admSaveU(id){
   if(refused(r))return flash(refused(r),1);
   const u=S.admU.find(x=>x.id===id);u.promo=p;u.promo_verifiee=v;flash('Compte mis à jour.');
 }
-const admUsers=()=>{
-  if(S.admUe)return `<section class="panel"><h3>Comptes et promos</h3><p class="bad">${esc(S.admUe)}</p></section>`;
-  if(!S.admU)return `<section class="panel"><h3>Comptes et promos</h3><div class="empty">Chargement…</div></section>`;
-  const L=S.admU.slice().sort((a,b)=>(a.promo_verifiee-b.promo_verifiee)||String(a.pseudo).localeCompare(b.pseudo));
-  return `<section class="panel" style="margin-bottom:14px"><h3>Comptes et promos (${L.length})</h3>
-    <p class="note" style="margin:0 0 8px">Vérifie la promo de chaque compte. Coche « vérifiée » : le membre ne pourra plus la modifier.</p>
-    <ul class="q">${L.map(u=>`<li><span>${esc(u.pseudo)} <span class="note" style="margin:0">${u.role==='admin'?'admin':''}</span></span>
-    <span class="row" style="margin:0"><input type="number" id="au_${u.id}" value="${esc(u.promo||'')}" placeholder="promo" style="width:90px" aria-label="Promo de ${esc(u.pseudo)}">
-    <label class="note" style="margin:0"><input type="checkbox" id="av_${u.id}" ${u.promo_verifiee?'checked':''}> vérifiée</label>
-    <button class="btn" onclick="admSaveU('${u.id}')">Enregistrer</button></span></li>`).join('')}</ul></section>`;
-};
+
 
 const tid=()=>CHAP().ty[S.topic].id;
 function getR(){return S.RES[tid()]||{}}
@@ -1369,6 +1358,7 @@ function topicList(){
 function render(){
   const app=$('app');
   if(!S.user)S.v='home';
+  if(S.y!==null&&!yOK(S.y)){S.y=null;if(['dom','chap','cours','exos','annales','partiel','grille'].includes(S.v))S.v='home'}
   if(['dom','chap','cours','exos','annales','partiel','grille'].includes(S.v)&&S.y===null)S.v='home';
   if(['chap','cours','exos','annales'].includes(S.v)&&!(CHAPS[S.d]&&CHAPS[S.d][S.ch]))S.v='dom';
   app.className='d-'+S.d;
@@ -1406,16 +1396,17 @@ async function loadData(){
     sb.from('modeles_exo').select('type_id,donnees'),
     sb.from('contenus').select('cle,valeur'),
     DOCQ(),
-    sb.from('modules').select('id,matiere,annee_etude,numero,titre,ordre').order('numero')]);
+    sb.from('modules').select('id,matiere,annee_etude,numero,titre,ordre,promo').order('numero')]);
   const c=c0.error?await sb.from('chapitres').select(CS).order('ordre'):c0;
+  if(mm.error){const m2=await sb.from('modules').select('id,matiere,annee_etude,numero,titre,ordre').order('numero');if(!m2.error)Object.assign(mm,m2)}
   const e=c.error||mo.error||co.error||dc.error;if(e)throw e;
   DB.docs=dc.data||[];
   MODS.length=0;
-  if(!mm.error&&mm.data)mm.data.forEach(m=>MODS.push({id:m.id,matiere:m.matiere,an:m.annee_etude,num:m.numero,raw:m.titre||'',ordre:m.ordre}));
+  if(!mm.error&&mm.data)mm.data.forEach(m=>MODS.push({id:m.id,matiere:m.matiere,an:m.annee_etude,num:m.numero,raw:m.titre||'',ordre:m.ordre,pr:m.promo||2025}));
   for(const k in CHAPS)CHAPS[k]=[];
   c.data.forEach(r=>{if(!CHAPS[r.matiere])return;
     const ty=(r.types_exo||[]).slice().sort((a,b)=>a.ordre-b.ordre),m=MODS.find(x=>x.id===r.module_id),an=m?m.an:2;
-    CHAPS[r.matiere].push({id:r.id,n:esc(r.titre),raw:r.titre,desc:r.description||'',mid:m?m.id:null,an,lab:'A'+an+(m?' · M'+m.num:'')+' · '+esc(r.titre),ty,t:ty.map(x=>esc(x.titre))})});
+    CHAPS[r.matiere].push({id:r.id,n:esc(r.titre),raw:r.titre,desc:r.description||'',mid:m?m.id:null,an,lab:'A'+an+(m?' · M'+m.num+' · P'+m.pr:'')+' · '+esc(r.titre),ordre:r.ordre,ty,t:ty.map(x=>esc(x.titre))})});
   const gens=new Set(c.data.flatMap(r=>(r.types_exo||[]).filter(x=>x.generateur==='domaines-plan').map(x=>x.id)));
   const m=mo.data.filter(r=>gens.has(r.type_id)).map(r=>r.donnees).sort((a,b)=>a.f<b.f?-1:1);
   if(m.length)MOD=m;
@@ -1429,7 +1420,8 @@ async function enter(user){
     if(p.error)p=await sb.from('profiles').select('pseudo,role').eq('id',user.id).single();
     if(p.error)throw p.error;
     S.prof={promo:p.data.promo||null,verif:!!p.data.promo_verifiee,cex:!!p.data.classement_exos,cre:!!p.data.classement_reel};S.G={};S.gp=null;S.cl.promo=S.prof.promo;
-    S.pseudo=p.data.pseudo;S.role=p.data.role;await loadData();await loadMine();
+    S.pseudo=p.data.pseudo;S.role=p.data.role;await annLoad();
+    await loadData();await loadMine();
   }catch(e){S.err=e.message||String(e)}
   S.loading=false;render();
 }
@@ -1468,7 +1460,7 @@ async function addChap(mid){
 async function addMod(){
   const n=parseInt($('nmn').value,10),t=$('nmt').value.trim();
   if(!(n>0))return flash('Donne un numéro de module (1, 2, 3…).',1);
-  const r=await sb.from('modules').insert({matiere:S.d,annee_etude:S.y,numero:n,titre:t||null,ordre:n}).select();
+  const r=await sb.from('modules').insert(Object.assign({matiere:S.d,annee_etude:S.y,numero:n,titre:t||null,ordre:n},$('nmp')&&Number($('nmp').value)>=2000?{promo:Number($('nmp').value)}:{})).select();
   if(refused(r))return flash(refused(r)+' (table « modules » créée ?)',1);
   await loadData();flash('Module ajouté.');
 }
@@ -1488,7 +1480,7 @@ function addChapHtml(mid){
   return ed()?`<div class="row" style="margin-top:12px"><input type="text" id="nc_${mid}" placeholder="Titre du nouveau chapitre" aria-label="Titre du nouveau chapitre"><button class="btn" onclick="addChap('${mid}')">Ajouter un chapitre à ce module</button></div>`:'';
 }
 function addModHtml(){
-  return ed()?`<div class="row"><input type="number" id="nmn" min="1" style="width:90px" placeholder="N°" aria-label="Numéro du module"><input type="text" id="nmt" placeholder="Titre du module (facultatif)" aria-label="Titre du module"><button class="btn" onclick="addMod()">Ajouter un module en ${YN[S.y]}</button></div>`:'';
+  return ed()?`<div class="row"><input type="number" id="nmn" min="1" style="width:90px" placeholder="N°" aria-label="Numéro du module"><input type="text" id="nmt" placeholder="Titre du module (facultatif)" aria-label="Titre du module"><input type="number" id="nmp" min="2000" max="2100" value="${acadYear()-S.y+1}" style="width:90px" aria-label="Promo du module" title="Promo à qui ce module est enseigné"><button class="btn" onclick="addMod()">Ajouter un module en ${YN[S.y]}</button></div>`:'';
 }
 function modEdit(m){
   return `<div class="row"><input type="number" id="mn_${m.id}" min="1" value="${m.num}" style="width:90px" aria-label="Numéro du module"><input type="text" id="mt_${m.id}" value="${esc(m.raw)}" placeholder="Titre du module (facultatif)" aria-label="Titre du module"><button class="btn" onclick="saveMod('${m.id}')">Enregistrer le module</button></div>`;
@@ -1712,7 +1704,7 @@ async function admDelete(id){
   if(S.pvId===id)S.pvId=null;
   await reloadDocs();flash('Document supprimé.');
 }
-function admHtml(){
+function admDepots(){
   const P=DB.docs.filter(d=>d.statut==='en_attente'),O=DB.docs.filter(d=>d.statut!=='en_attente'),pd=DB.docs.find(d=>d.id===S.pvId);
   const row=d=>{
     const a=A_(d),ch=CHAPS[a.m]||[],ann=a.c?pub('annale').filter(x=>x.chapitre_id===a.c):[];
@@ -1725,12 +1717,163 @@ function admHtml(){
       ${a.ty==='annale'?`<input type="number" value="${esc(a.y)}" placeholder="Année" aria-label="Année" oninput="admSet('${d.id}','y',this.value)">`:''}
       ${a.ty==='correction'?`<select aria-label="Annale" onchange="admSet('${d.id}','a',this.value,1)"><option value="">— annale —</option>${ann.map(x=>`<option value="${x.id}"${x.id===a.a?' selected':''}>${esc(x.titre)}${x.annee?' ('+x.annee+')':''}</option>`).join('')}</select>`:''}</div>
       <div class="row" style="margin:0"><button class="btn" onclick="admPublish('${d.id}')">Publier</button><button class="btn" onclick="admReject('${d.id}')">Rejeter</button></div></div>`};
-  return `${admUsers()}<h1>Admin – file de tri</h1><p class="lead">Range chaque dépôt dans un chapitre, puis publie-le. Il devient alors visible par toute la promo.</p>
+  return `<p class="lead">Range chaque dépôt dans un chapitre, puis publie-le. Il devient alors visible par toute la promo.</p>
   <section class="panel"><h3>En attente (${P.length})</h3>${P.length?P.map(row).join(''):'<div class="empty">Rien à trier pour le moment.</div>'}
     ${pd&&pd.statut==='en_attente'?'<h3 style="margin-top:14px">Aperçu</h3>'+pvHtml(pd):''}</section>
   <section class="panel" style="margin-top:14px"><h3>Publiés et rejetés (${O.length})</h3>${O.length?'<ul class="q">'+O.map(d=>`<li><span>${esc(d.titre)} <span class="note" style="margin:0">${TY[d.type]} – ${STD[d.statut]}</span></span>
     <span class="row" style="margin:0"><button class="btn" onclick="showPv('${d.id}')">Voir</button><button class="btn" onclick="admDelete('${d.id}')">${S.cfd===d.id?'Confirmer la suppression':'Supprimer'}</button></span></li>`).join('')+'</ul>'
     +(pd&&pd.statut!=='en_attente'?pvHtml(pd):''):'<div class="empty">Aucun document.</div>'}</section>`;
+}
+/* ===== Admin rangé en menus : dépôts, comptes, promos & accès, contenu, grilles ===== */
+const acadYear=()=>{const d=new Date();return d.getMonth()>=8?d.getFullYear():d.getFullYear()-1};
+const pCur=p=>Math.max(1,Math.min(5,acadYear()-p+1));
+const pAutoYears=p=>[...Array(pCur(p))].map((_,i)=>i+1);
+const yOK=y=>S.role==='admin'||!S.ann||S.ann.includes(y);
+async function annLoad(){
+  S.ann=null;
+  try{const r=await sb.rpc('mes_annees');S.ann=(r.error||!Array.isArray(r.data))?null:r.data.map(Number)}catch(e){S.ann=null}
+}
+const AT={depots:'Dépôts',comptes:'Comptes',promos:'Promos et accès',contenu:'Contenu',grilles:'Grilles de notes'};
+function admTabs(){
+  const todo=(S.admU||[]).filter(u=>!u.promo_verifiee).length,pend=DB.docs.filter(d=>d.statut==='en_attente').length,n={depots:pend,comptes:todo};
+  return `<div class="tabs" style="--c:#3b6fd4">${Object.keys(AT).map(k=>`<button class="tab${S.at===k?' on':''}" onclick="S.at='${k}';render()">${AT[k]}${n[k]?` <span class="badge">${n[k]}</span>`:''}</button>`).join('')}</div>`;
+}
+async function admLoadU(){
+  const [u,a]=await Promise.all([sb.from('profiles').select('id,pseudo,role,promo,promo_verifiee,created_at').order('created_at'),sb.from('acces_promo').select('promo,annees,voir_recent')]);
+  S.admU=u.error?null:(u.data||[]);S.admUe=u.error?u.error.message:'';
+  S.pa={};S.paE=a.error?a.error.message:'';(a.data||[]).forEach(x=>{S.pa[x.promo]={annees:x.annees,rec:!!x.voir_recent}});
+  if(S.v==='admin')render();
+}
+const promoList=()=>{const s=new Set([acadYear(),acadYear()-1]);(S.admU||[]).forEach(u=>u.promo&&s.add(u.promo));Object.keys(S.pa||{}).forEach(p=>s.add(Number(p)));MODS.forEach(m=>m.pr&&s.add(m.pr));(S.admP||[]).forEach(p=>s.add(p));return[...s].sort((a,b)=>b-a)};
+/* comptes */
+const admUsers=()=>{
+  if(S.admUe)return `<section class="panel"><h3>Comptes</h3><p class="bad">${esc(S.admUe)}</p></section>`;
+  if(!S.admU)return `<section class="panel"><h3>Comptes</h3><div class="empty">Chargement…</div></section>`;
+  const f=S.cft||'all',L=S.admU.filter(u=>f==='all'||!u.promo_verifiee).sort((a,b)=>(a.promo_verifiee-b.promo_verifiee)||String(a.pseudo).localeCompare(b.pseudo));
+  return `<section class="panel"><h3>Comptes (${S.admU.length})</h3>
+    <p class="note" style="margin:0 0 8px">Vérifie la promo de chaque compte. Coche « vérifiée » : le membre ne pourra plus la modifier.</p>
+    <div class="tabs" style="--c:#3b6fd4;margin-bottom:10px"><button class="tab${f==='all'?' on':''}" onclick="S.cft='all';render()">Tous</button><button class="tab${f==='todo'?' on':''}" onclick="S.cft='todo';render()">À vérifier (${S.admU.filter(u=>!u.promo_verifiee).length})</button></div>
+    ${L.length?`<ul class="q">${L.map(u=>`<li><span>${esc(u.pseudo)} <span class="note" style="margin:0">${u.role==='admin'?'admin':''}</span></span>
+    <span class="row" style="margin:0"><input type="number" id="au_${u.id}" value="${esc(u.promo||'')}" placeholder="promo" style="width:90px" aria-label="Promo de ${esc(u.pseudo)}">
+    <label class="note" style="margin:0"><input type="checkbox" id="av_${u.id}" ${u.promo_verifiee?'checked':''}> vérifiée</label>
+    <button class="btn" onclick="admSaveU('${u.id}')">Enregistrer</button></span></li>`).join('')}</ul>`:'<div class="empty">Rien à vérifier.</div>'}</section>`;
+};
+/* promos & accès */
+function paAuto(p,on){document.querySelectorAll('.py_'+p).forEach(i=>{i.disabled=on;if(on)i.checked=pAutoYears(p).includes(Number(i.value))})}
+async function paSave(p){
+  const auto=$('pau_'+p).checked,ys=[...document.querySelectorAll('.py_'+p)].filter(i=>i.checked).map(i=>Number(i.value)),rec=$('pre_'+p).checked;
+  const r=await sb.from('acces_promo').upsert({promo:p,annees:auto?null:ys,voir_recent:rec,updated_at:new Date().toISOString()},{onConflict:'promo'}).select();
+  if(refused(r))return flash(refused(r)+' (maj-acces-promos.sql lancé ?)',1);
+  S.pa[p]={annees:auto?null:ys,rec};flash('Accès de la promo '+p+' enregistré.');
+}
+function paAdd(){
+  const p=Number($('npa').value);if(!(Number.isInteger(p)&&p>=2000&&p<=2100))return flash('Promo invalide (2000–2100).',1);
+  (S.admP=S.admP||[]).push(p);render();
+}
+function admPromos(){
+  if(S.paE)return `<section class="panel"><h3>Promos et accès</h3><p class="bad">${esc(S.paE)}</p><p class="note">As-tu lancé « maj-acces-promos.sql » dans Supabase ?</p></section>`;
+  const U=S.admU||[];
+  return `<section class="panel"><h3>Promos et accès</h3>
+    <p class="note" style="margin:0 0 10px">Réglage automatique : une promo voit les années 1 à son année actuelle. Décoche-le pour choisir les années à la main. Les membres voient les cours de leur promo et des promos plus anciennes ; l'admin voit tout.</p>
+    <div class="row"><input type="number" id="npa" min="2000" max="2100" placeholder="Nouvelle promo (ex. ${acadYear()})" style="width:270px"><button class="btn" onclick="paAdd()">Ajouter une promo</button></div>
+    ${promoList().map(p=>{const x=(S.pa||{})[p]||{},auto=!x.annees,ys=auto?pAutoYears(p):x.annees,n=U.filter(u=>u.promo===p),v=n.filter(u=>u.promo_verifiee).length;
+      return `<div class="adm"><div class="row"><b>Promo ${p}</b><span class="note" style="margin:0">${n.length} compte${n.length>1?'s':''} (${v} vérifié${v>1?'s':''}) · actuellement en ${YN[pCur(p)]}</span></div>
+      <div class="row"><label class="note" style="margin:0"><input type="checkbox" id="pau_${p}" ${auto?'checked':''} onchange="paAuto(${p},this.checked)"> automatique</label>
+      ${[1,2,3,4,5].map(y=>`<label class="note" style="margin:0"><input type="checkbox" class="py_${p}" value="${y}" ${ys.includes(y)?'checked':''} ${auto?'disabled':''}> ${YN[y].replace(' année','')}</label>`).join('')}
+      <label class="note" style="margin:0"><input type="checkbox" id="pre_${p}" ${x.rec?'checked':''}> voit aussi les promos plus récentes</label>
+      <button class="btn" onclick="paSave(${p})">Enregistrer</button></div></div>`}).join('')}</section>`;
+}
+/* contenu : modules et chapitres */
+const cnF=()=>S.cn=S.cn||{an:'',pr:''};
+const modOpt=(sel,m0)=>MODS.filter(m=>!m0||m.matiere===m0).sort((a,b)=>a.an-b.an||a.num-b.num||b.pr-a.pr).map(m=>`<option value="${m.id}"${m.id===sel?' selected':''}>${D[m.matiere]} · A${m.an} · M${m.num} · promo ${m.pr}${m.raw?' – '+esc(m.raw):''}</option>`).join('');
+async function cmSave(id){
+  const n=parseInt($('cmn_'+id).value,10),a=parseInt($('cma_'+id).value,10),p=parseInt($('cmp_'+id).value,10),t=$('cmt_'+id).value.trim();
+  if(!(n>0)||!(a>=1&&a<=5)||!(p>=2000&&p<=2100))return flash('Numéro, année (1–5) et promo (2000–2100) requis.',1);
+  const r=await sb.from('modules').update({numero:n,annee_etude:a,promo:p,titre:t||null,ordre:n}).eq('id',id).select();
+  if(refused(r))return flash(/duplicate|unique/i.test(r.error?r.error.message:'')?'Ce module existe déjà pour cette promo.':refused(r),1);
+  await loadData();flash('Module enregistré.');
+}
+async function cmDel(id){
+  if(CHAPS[Object.keys(CHAPS).find(k=>CHAPS[k].some(c=>c.mid===id))||'maths'].some(c=>c.mid===id))return flash('Ce module contient des chapitres : déplace-les d\'abord.',1);
+  if(S.cmd!==id){S.cmd=id;render();return}
+  S.cmd=null;const r=await sb.from('modules').delete().eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await loadData();flash('Module supprimé.');
+}
+async function cmDup(id){
+  const m=MODS.find(x=>x.id===id),p=parseInt($('cmd_'+id).value,10);
+  if(!(p>=2000&&p<=2100)||p===m.pr)return flash('Indique une autre promo (2000–2100).',1);
+  if(MODS.some(x=>x.matiere===m.matiere&&x.an===m.an&&x.num===m.num&&x.pr===p))return flash('Ce module existe déjà pour la promo '+p+'.',1);
+  const nm=uid(),chs=CHAPS[m.matiere].filter(c=>c.mid===id);
+  let r=await sb.from('modules').insert({id:nm,matiere:m.matiere,annee_etude:m.an,numero:m.num,titre:m.raw||null,ordre:m.ordre||m.num,promo:p}).select();
+  if(refused(r))return flash(refused(r),1);
+  if(chs.length){
+    const C=chs.map((c,i)=>({id:uid(),old:c.id,matiere:m.matiere,titre:c.raw,description:c.desc||null,ordre:c.ordre||i+1,module_id:nm}));
+    r=await sb.from('chapitres').insert(C.map(({old,...x})=>x)).select();
+    if(refused(r))return flash(refused(r),1);
+    const T=[];chs.forEach((c,i)=>c.ty.forEach(t=>T.push({id:uid(),old:t.id,chapitre_id:C[i].id,titre:t.titre,generateur:t.generateur||null,nb_exercices:t.nb_exercices,ordre:t.ordre})));
+    if(T.length){
+      r=await sb.from('types_exo').insert(T.map(({old,...x})=>x)).select();
+      if(refused(r))return flash(refused(r),1);
+      const mo=await sb.from('modeles_exo').select('type_id,donnees');
+      const MM=(mo.data||[]).filter(x=>T.some(t=>t.old===x.type_id)).map(x=>({type_id:T.find(t=>t.old===x.type_id).id,donnees:x.donnees}));
+      if(MM.length){const w=await sb.from('modeles_exo').insert(MM).select();if(w.error)return flash(fr(w.error.message),1)}
+    }
+  }
+  await loadData();flash('Module copié vers la promo '+p+' (structure et types d\'exos ; les documents sont à déposer pour cette promo).');
+}
+async function cmAdd(){
+  const mat=$('cnm').value,n=parseInt($('cnn').value,10),a=parseInt($('cna').value,10),p=parseInt($('cnp').value,10),t=$('cnt').value.trim();
+  if(!(n>0)||!(a>=1&&a<=5)||!(p>=2000&&p<=2100))return flash('Numéro, année (1–5) et promo (2000–2100) requis.',1);
+  const r=await sb.from('modules').insert({matiere:mat,annee_etude:a,numero:n,titre:t||null,ordre:n,promo:p}).select();
+  if(refused(r))return flash(/duplicate|unique/i.test(r.error?r.error.message:'')?'Ce module existe déjà pour cette promo.':refused(r),1);
+  await loadData();flash('Module ajouté.');
+}
+async function ccSave(id){
+  const t=$('cct_'+id).value.trim(),mid=$('ccm_'+id).value||null;if(!t)return flash('Le titre ne peut pas être vide.',1);
+  const r=await sb.from('chapitres').update({titre:t,module_id:mid}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await loadData();flash('Chapitre enregistré.');
+}
+function admContenu(){
+  const f=cnF(),pl=promoList(),ys=[1,2,3,4,5];
+  const MS=MODS.filter(m=>(!f.an||m.an===Number(f.an))&&(!f.pr||m.pr===Number(f.pr)));
+  const chRow=c=>`<div class="row" style="margin:4px 0"><input type="text" id="cct_${c.id}" value="${esc(c.raw)}" maxlength="200" aria-label="Titre du chapitre" style="min-width:200px">
+    <select id="ccm_${c.id}" aria-label="Module du chapitre"><option value="">— sans module —</option>${modOpt(c.mid,Object.keys(CHAPS).find(k=>CHAPS[k].includes(c)))}</select>
+    <button class="btn" onclick="ccSave('${c.id}')">Enregistrer</button></div>`;
+  const modBlk=m=>{const cs=CHAPS[m.matiere].filter(c=>c.mid===m.id);return `<div class="adm"><div class="row"><b>${D[m.matiere]}</b>
+    <input type="number" id="cmn_${m.id}" min="1" value="${m.num}" style="width:70px" aria-label="Numéro"><input type="text" id="cmt_${m.id}" value="${esc(m.raw)}" placeholder="Titre" aria-label="Titre du module">
+    <label class="note" style="margin:0">année <select id="cma_${m.id}">${ys.map(y=>`<option value="${y}"${y===m.an?' selected':''}>${y}</option>`).join('')}</select></label>
+    <label class="note" style="margin:0">promo <input type="number" id="cmp_${m.id}" min="2000" max="2100" value="${m.pr}" style="width:90px"></label>
+    <button class="btn" onclick="cmSave('${m.id}')">Enregistrer</button></div>
+    <div class="row"><label class="note" style="margin:0">Copier ce module pour la promo <input type="number" id="cmd_${m.id}" min="2000" max="2100" placeholder="${m.pr+1}" style="width:90px"></label>
+    <button class="btn" onclick="cmDup('${m.id}')">Copier</button><button class="btn" onclick="cmDel('${m.id}')">${S.cmd===m.id?'Confirmer la suppression':'Supprimer le module'}</button></div>
+    ${cs.length?cs.map(chRow).join(''):'<div class="note" style="margin:0">Aucun chapitre.</div>'}</div>`};
+  const orph=Object.keys(CHAPS).flatMap(k=>CHAPS[k].filter(c=>!c.mid));
+  return `<section class="panel"><h3>Contenu : modules et chapitres</h3>
+    <p class="note" style="margin:0 0 10px">Un module appartient à une année et à une promo (celle à qui il est enseigné). Pour un changement de cours : copie le module vers la nouvelle promo, adapte-le, et dépose les nouveaux documents. Les anciennes promos gardent leurs cours, et les nouvelles peuvent toujours les revoir.</p>
+    <div class="row"><label class="note" style="margin:0">Année <select onchange="cnF().an=this.value;render()"><option value="">Toutes</option>${ys.map(y=>`<option value="${y}"${String(y)===String(f.an)?' selected':''}>${y}</option>`).join('')}</select></label>
+    <label class="note" style="margin:0">Promo <select onchange="cnF().pr=this.value;render()"><option value="">Toutes</option>${pl.map(p=>`<option value="${p}"${String(p)===String(f.pr)?' selected':''}>${p}</option>`).join('')}</select></label></div>
+    <div class="adm"><div class="row"><b>Nouveau module</b><select id="cnm">${Object.keys(D).map(k=>`<option value="${k}">${D[k]}</option>`).join('')}</select>
+      <input type="number" id="cnn" min="1" placeholder="N°" style="width:70px"><input type="text" id="cnt" placeholder="Titre (facultatif)">
+      <label class="note" style="margin:0">année <select id="cna">${ys.map(y=>`<option value="${y}"${y===(S.y||2)?' selected':''}>${y}</option>`).join('')}</select></label>
+      <label class="note" style="margin:0">promo <input type="number" id="cnp" min="2000" max="2100" value="${acadYear()-(S.y||2)+1}" style="width:90px"></label>
+      <button class="btn" onclick="cmAdd()">Ajouter</button></div></div>
+    ${MS.length?MS.sort((a,b)=>a.an-b.an||a.matiere.localeCompare(b.matiere)||a.num-b.num||b.pr-a.pr).map(modBlk).join(''):'<div class="empty">Aucun module pour ce filtre.</div>'}
+    ${orph.length?`<h3 style="margin-top:14px">Chapitres sans module (${orph.length})</h3>${orph.map(chRow).join('')}`:''}</section>`;
+}
+/* grilles de notes : raccourci */
+function admGrilles(){
+  const pl=promoList();
+  return `<section class="panel"><h3>Grilles de notes</h3>
+    <p class="note" style="margin:0 0 10px">Chaque promo et chaque année ont leur propre grille (coefficients, épreuves). Choisis laquelle modifier : elle s'ouvre en mode édition, tu peux aussi y copier la grille d'une autre promo.</p>
+    <div class="row"><label class="note" style="margin:0">Année <select id="gga">${[1,2,3,4,5].map(y=>`<option value="${y}"${y===(S.y||2)?' selected':''}>${YN[y]}</option>`).join('')}</select></label>
+    <label class="note" style="margin:0">Promo <select id="ggp">${pl.map(p=>`<option value="${p}">${p}</option>`).join('')}</select></label>
+    <button class="btn" onclick="S.gp=Number($('ggp').value);S.y=Number($('gga').value);S.edit=true;go('grille')">Ouvrir la grille</button></div></section>`;
+}
+function admHtml(){
+  const body={depots:admDepots,comptes:admUsers,promos:admPromos,contenu:admContenu,grilles:admGrilles}[S.at||'depots']();
+  return `<h1>Admin</h1>${admTabs()}${body}`;
 }
 
 async function boot(){
