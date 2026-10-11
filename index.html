@@ -1094,7 +1094,7 @@ const gKids=(N,sm,id)=>N.filter(n=>n.semestre===sm&&(n.parent_id||null)===id).so
 function gcalc(N,NO,sm){
   const R={};
   const ev=n=>{
-    if(n.feuille){const x=NO[n.id],v=!x?null:x.abs?0:(x.v==null?null:Number(x.v));return R[n.id]={v,nb:v==null?0:1,tot:1}}
+    if(n.feuille){const x=NO[n.id];if(x&&x.abs)return R[n.id]={v:null,nb:0,tot:0,abs:true};const v=!x||x.v==null?null:Number(x.v);return R[n.id]={v,nb:v==null?0:1,tot:1}}
     let s=0,w=0,nb=0,tot=0;
     for(const c of gKids(N,sm,n.id)){const r=ev(c);tot+=r.tot;nb+=r.nb;if(r.v!=null&&Number(c.coef)>0){s+=Number(c.coef)*r.v;w+=Number(c.coef)}}
     return R[n.id]={v:w?s/w:null,nb,tot};
@@ -1234,7 +1234,7 @@ function grilleView(){
   if(!G||G.loading)return head+'<div class="empty">Chargement…</div>';
   if(G.err)return head+`<section class="panel"><p class="bad">Impossible de charger le tableau : ${esc(G.err)}</p><p class="note">As-tu lancé « maj-notes-classement.sql » dans Supabase ?</p><div class="row"><button class="btn" onclick="gridLoad(true)">Réessayer</button></div></section>`;
   const sm=S.gs,C=gcalc(G.nodes,G.notes,sm),roots=gKids(G.nodes,sm,null),yr=Object.values(CHAPS).flat().filter(c=>c.an===a).flatMap(c=>c.ty),ag=agg(yr);
-  return head+`<p class="lead">Note tes vraies notes (sur 20) : les moyennes se calculent toutes seules avec les coefficients. Une case vide est ignorée (moyenne provisoire), « abs » compte 0. Tu peux joindre le sujet, la copie ou le relevé à chaque note ; tout reste privé.</p>
+  return head+`<p class="lead">Note tes vraies notes (sur 20) : les moyennes se calculent toutes seules avec les coefficients. Une case vide est ignorée (moyenne provisoire). Une épreuve marquée « abs » est ignorée : les coefficients des autres épreuves sont recalculés pour que la moyenne reste réaliste. Tu peux joindre le sujet, la copie ou le relevé à chaque note ; tout reste privé.</p>
   <div class="tabs" style="--c:#3b6fd4">${[1,2].map(s=>`<button class="tab${s===sm?' on':''}" onclick="S.gs=${s};render()">Semestre ${sem(a,s)}</button>`).join('')}</div>
   <div class="cards" style="margin-bottom:14px">
     <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Moyenne du semestre ${sem(a,sm)}</p><div class="big">${fx(C.root.v)}${C.root.v==null?'':' / 20'}</div>
