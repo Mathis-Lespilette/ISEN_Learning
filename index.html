@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root{
   --bg:#070d1c;--panel:#0b1530;--line:#182a52;--txt:#c9d6f2;--mut:#6f82ad;
@@ -93,6 +94,20 @@ ul.q{list-style:none;margin:0;padding:0}
 ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:8px 0;flex-wrap:wrap}
 .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .thumbs img{height:90px;border:1px solid var(--line)}
+.dvbox{min-width:0}
+.dvnav input{width:64px}
+.dvslide{border:1px solid var(--line);background:#fff;line-height:0;min-height:80px}
+.dvslide canvas{width:100%;height:auto;display:block}
+.dvnotes{margin-top:12px}
+.dvd{width:100%;height:auto;touch-action:none;border:1px solid var(--line);background:var(--panel);display:block;cursor:crosshair}
+.dvd.grid{background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:5% 8.888%}
+.ltx{border:1px dashed var(--line);padding:8px 10px;margin-top:8px;line-height:1.7;overflow-x:auto}
+.ltx:empty{display:none}
+.dvtb{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 6px}
+.dvtb button{padding:3px 8px;background:var(--panel);border:1px solid var(--line);color:var(--txt)}
+.dvcol{width:22px;height:22px;padding:0;border:2px solid var(--line);border-radius:50%}
+.dvcol.on{border-color:var(--txt)}
+.dvph{max-width:100%;border:1px solid var(--line);display:block;margin-top:8px}
 .pv{width:100%;height:520px;border:1px solid var(--line);background:#fff;display:block}
 .pvi{max-width:100%;border:1px solid var(--line);display:block}
 .ovl{position:fixed;inset:0;background:rgba(2,5,14,.82);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -252,7 +267,8 @@ const views={
         <button class="btn" onclick="delPg()">Supprimer la page</button>
         <button class="btn" onclick="S.big=!S.big;render()">${S.big?'Réduire':'Agrandir'}</button>
         <span id="ns" class="note" role="status" style="margin:0"></span></div>
-        <textarea id="nt" placeholder="Écris tes commentaires sur ce cours…"></textarea>
+        <textarea id="nt" placeholder="Écris tes commentaires sur ce cours… Équations : $…$ dans la ligne, $$…$$ centrée."></textarea>
+        <div id="ntp" class="ltx"></div>
         <canvas id="cv" width="900" height="1200"></canvas>
         <div class="row" style="margin:8px 0 0"><button class="btn" onclick="clearCv()">Effacer le dessin</button></div>
         <p class="note">Tes notes sont enregistrées dans ton compte (toi seul les vois) et te suivent d'un appareil à l'autre.</p></section>
@@ -376,8 +392,8 @@ function bindNotes(){
   const N=getN(),page=N.p[N.i],chap=CHAP().id;
   $('pn').textContent='Page '+(N.i+1)+' / '+N.p.length;
   setNs(S.nst,S.nko);
-  nt.value=page.t;
-  nt.oninput=()=>{page.t=nt.value;setNs('Modifications non enregistrées…');later('t'+chap+':'+page.n,()=>sendNote(chap,page),800)};
+  nt.value=page.t;ltx($('ntp'),page.t);
+  nt.oninput=()=>{page.t=nt.value;ltx($('ntp'),nt.value);setNs('Modifications non enregistrées…');later('t'+chap+':'+page.n,()=>sendNote(chap,page),800)};
   const x=cv.getContext('2d'),wait=page.path&&page.c===undefined;
   if(page.c){const im=new Image();im.onload=()=>{if($('cv')===cv)x.drawImage(im,0,0)};im.src=page.c}
   if(wait){cv.style.opacity='.5';loadDraw(page)}
@@ -1377,7 +1393,7 @@ function render(){
   else if(S.err)html=`<section class="panel"><p class="bad">Impossible de charger les données : ${esc(S.err)}</p><div class="row"><button class="btn" onclick="enter(S.user)">Réessayer</button></div></section>`;
   else html=views[S.v]();
   $('view').innerHTML=(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html+gModal();
-  bindNotes();bindGen();ptBind();mathRender();
+  bindNotes();bindGen();ptBind();dvBind();mathRender();
 }
 /* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
 const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y4tkgIlrNoHjjsRSw_DjjA_NrBmdQfr';
@@ -1536,6 +1552,197 @@ async function dl(id){
 }
 const dlBtn=d=>`<div class="row" style="margin:12px 0 0"><button class="btn" ${d?`onclick="dl('${d.id}')"`:'disabled'}>Télécharger</button></div>`;
 
+/* Visionneuse de diapos : notes (texte + LaTeX), dessins et photos par diapositive */
+const dvHtml=d=>d?`<div id="dv" class="dvbox" data-id="${d.id}"></div>`:pvHtml(d);
+let DV={id:null};
+const DVT=[['$…$','$','$','Équation dans la ligne'],['$$…$$','\n$$','$$\n','Équation centrée sur sa ligne'],['a/b','\\frac{','}{}','Fraction'],['∫','\\int_{','}^{}','Intégrale'],['∬','\\iint_{D} ','',''],['∂','\\partial ','',''],['Σ','\\sum_{i=1}^{n} ','',''],['√','\\sqrt{','}',''],['xⁿ','^{','}','Exposant'],['xᵢ','_{','}','Indice'],['⇒','\\Rightarrow ','',''],['≤','\\leq ','',''],['≥','\\geq ','',''],['∞','\\infty ','',''],['π','\\pi ','',''],['θ','\\theta ','','']];
+const DVC=['','#ffffff','#ef4444','#22c55e','#eab308'];
+function ltx(el,t){
+  if(!el)return;el.innerHTML=esc(t||'').replace(/\n/g,'<br>');
+  if(window.renderMathInElement&&/[$\\]/.test(t||''))try{window.renderMathInElement(el,{delimiters:MDEL,throwOnError:false})}catch(e){}
+}
+function dvSt(t,ko){DV.stt=t||'';DV.sko=!!ko;const e=$('dvst');if(e){e.textContent=DV.stt;e.className=ko?'bad':'note'}}
+function dvBind(){
+  const el=$('dv');if(!el)return;
+  const id=el.dataset.id;
+  if(DV.id!==id){DV={id,n:0,i:1,notes:{},pi:{},st:'load',pen:{c:0,w:3,er:false,g:false}};dvInit(id)}
+  dvDraw();
+}
+async function dvInit(id){
+  const d=DB.docs.find(x=>x.id===id);let u='';
+  try{
+    u=await signed('documents',d.fichier_path);DV.u=u;DV.ext=ext(d.fichier_path);
+    const nr=await sb.from('notes_diapo').select('diapo,page,kind,texte,fichier_path').eq('user_id',S.user.id).eq('document_id',id).order('page');
+    if(DV.id!==id)return;
+    if(nr.error)DV.nerr=fr(nr.error.message);
+    (nr.data||[]).forEach(x=>{(DV.notes[x.diapo]=DV.notes[x.diapo]||[]).push({page:x.page,kind:x.kind,t:x.texte||'',path:x.fichier_path,c:x.kind==='dessin'&&x.fichier_path?undefined:''})});
+    if(DV.ext==='pdf'){
+      if(!window.pdfjsLib)throw new Error('lecteur PDF non chargé');
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdf=await pdfjsLib.getDocument({url:u}).promise;
+      if(DV.id!==id)return;
+      DV.pdf=pdf;DV.n=pdf.numPages;
+    }else{DV.img=u;DV.n=1}
+    DV.st='ok';
+  }catch(e){DV.st='err';DV.err=e.message||String(e)}
+  if(DV.id===id)dvDraw();
+}
+function dvGo(n){n=Math.max(1,Math.min(DV.n,Math.round(+n)||1));DV.i=n;dvDraw()}
+function dvDraw(){
+  const el=$('dv');if(!el||el.dataset.id!==DV.id)return;
+  if(DV.st==='load'){el.innerHTML='<div class="preview empty">Chargement du document…</div>';return}
+  if(DV.st==='err'){
+    el.innerHTML=`<p class="note bad">Lecteur de diapos indisponible (${esc(DV.err)}). Aperçu simple, sans notes par diapo :</p>`
+      +(DV.ext==='pdf'?`<iframe class="pv" src="${esc(DV.u||'')}"></iframe>`:`<img class="pvi" src="${esc(DV.u||'')}">`);return}
+  const i=DV.i,have=Object.keys(DV.notes).filter(k=>DV.notes[k].length).map(Number).sort((a,b)=>a-b);
+  el.innerHTML=`<div class="row dvnav"><button class="btn" onclick="dvGo(DV.i-1)" aria-label="Diapositive précédente">‹</button>
+    <input id="dvn" type="number" min="1" max="${DV.n}" value="${i}" aria-label="Numéro de diapositive" onchange="dvGo(this.value)">
+    <span class="note" style="margin:0">/ ${DV.n}</span>
+    <button class="btn" onclick="dvGo(DV.i+1)" aria-label="Diapositive suivante">›</button>
+    <span id="dvst" class="note" role="status" style="margin:0">${esc(DV.stt||'')}</span></div>
+    ${have.length?`<div class="row dvhave"><span class="note" style="margin:0">Diapos annotées :</span>${have.map(k=>`<button class="lvl${k===i?' on':''}" onclick="dvGo(${k})">${k}</button>`).join('')}</div>`:''}
+    ${DV.nerr?`<p class="note bad">Notes indisponibles : ${esc(DV.nerr)} (le SQL maj-notes-diapos.sql a-t-il été exécuté ?)</p>`:''}
+    <div class="dvslide">${DV.pdf?'<canvas id="dvc"></canvas>':`<img class="pvi" src="${esc(DV.img)}" alt="Diapositive">`}</div>
+    <div class="dvnotes" id="dved"></div>`;
+  if(DV.pdf)dvSlide(i);
+  dvEd();
+}
+async function dvSlide(i){
+  const tok=DV.tok=(DV.tok||0)+1,c=$('dvc');if(!c)return;
+  try{
+    const pg=await DV.pdf.getPage(i),w=c.parentNode.clientWidth||800,v0=pg.getViewport({scale:1}),
+      vp=pg.getViewport({scale:(w/v0.width)*Math.min(2,window.devicePixelRatio||1)});
+    if(tok!==DV.tok||$('dvc')!==c)return;
+    c.width=vp.width;c.height=vp.height;
+    if(DV.rt){try{DV.rt.cancel()}catch(e){}}
+    DV.rt=pg.render({canvasContext:c.getContext('2d'),viewport:vp});
+    await DV.rt.promise;
+  }catch(e){}
+}
+const DVN={texte:'Notes',dessin:'Dessin',photo:'Photo'};
+function dvCur(){const L=DV.notes[DV.i]||[],k=Math.min(DV.pi[DV.i]||0,L.length-1);return{L,k,p:L[k]}}
+function dvPi(j){DV.pi[DV.i]=j;dvEd()}
+function dvEd(){
+  const el=$('dved');if(!el)return;
+  const {L,k,p}=dvCur();
+  let h=`<div class="row">${L.map((x,j)=>`<button class="lvl${j===k?' on':''}" onclick="dvPi(${j})">${j+1}. ${DVN[x.kind]}</button>`).join('')}
+    <button class="btn" onclick="dvAdd('texte')">+ Notes</button><button class="btn" onclick="dvAdd('dessin')">+ Dessin</button><button class="btn" onclick="dvAdd('photo')">+ Photo</button>
+    ${p?'<button class="btn" onclick="dvDel()">Supprimer cette page</button>':''}</div>`;
+  if(!p)h+='<p class="note">Aucune note sur cette diapositive. Ajoute une page de notes (texte avec équations), un dessin (schémas, plans…) ou une photo. Tout reste privé, dans ton compte.</p>';
+  else if(p.kind==='texte'){
+    h+=`<div class="dvtb">${DVT.map((x,j)=>`<button type="button" title="${esc(x[3]||x[1].trim())}" onclick="dvIns(${j})">${esc(x[0])}</button>`).join('')}</div>
+      <textarea id="dvt" placeholder="Tes notes… Pour une équation, entoure-la de $ … $ (dans la phrase) ou de $$ … $$ (centrée). Ex. : $\\int_0^1 x^2\\,dx=\\frac13$"></textarea>
+      <div id="dvtp" class="ltx"></div>`;
+  }else if(p.kind==='dessin'){
+    h+=`<div class="row dvtools">${DVC.map((c,j)=>`<button class="dvcol${!DV.pen.er&&DV.pen.c===j?' on':''}" style="background:${c||'var(--acc)'}" onclick="dvPen(${j})" aria-label="Couleur ${j+1}"></button>`).join('')}
+      <button class="btn${DV.pen.er?' on':''}" onclick="dvEr()">Gomme</button>
+      <select id="dvw" aria-label="Épaisseur" onchange="DV.pen.w=+this.value"><option value="2">Fin</option><option value="3">Moyen</option><option value="6">Épais</option></select>
+      <button class="btn" onclick="DV.pen.g=!DV.pen.g;$('dvd').classList.toggle('grid',DV.pen.g)">Quadrillage</button>
+      <button class="btn" onclick="dvClear()">Tout effacer</button></div>
+      <canvas id="dvd" class="dvd${DV.pen.g?' grid':''}" width="960" height="540"></canvas>`;
+  }else{
+    h+=`<div class="row"><label class="btn" style="cursor:pointer">${p.path?'Remplacer la photo':'Choisir / prendre une photo'}
+      <input type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="dvPhoto(this.files[0]);this.value=''"></label></div>
+      <div id="dvph">${p.path?'<span class="note">Chargement…</span>':''}</div>`;
+  }
+  el.innerHTML=h;
+  if(!p)return;
+  if(p.kind==='texte')dvBindText(p);else if(p.kind==='dessin')dvBindDraw(p);else if(p.path)dvShowPhoto(p);
+}
+function dvBindText(p){
+  const ta=$('dvt'),id=DV.id,i=DV.i;ta.value=p.t;ltx($('dvtp'),p.t);
+  ta.oninput=()=>{p.t=ta.value;ltx($('dvtp'),p.t);dvSt('Modifications non enregistrées…');later('dt'+id+':'+i+':'+p.page,()=>dvPut(id,i,p),800)};
+}
+function dvIns(j){
+  const ta=$('dvt');if(!ta)return;const x=DVT[j],a=ta.selectionStart,b=ta.selectionEnd,v=ta.value;
+  ta.value=v.slice(0,a)+x[1]+v.slice(a,b)+x[2]+v.slice(b);
+  const pos=b+x[1].length+(a===b?0:x[2].length);ta.focus();
+  if(a===b){const q=x[1].length;ta.setSelectionRange(a+q,a+q)}else ta.setSelectionRange(pos,pos);
+  ta.oninput&&ta.oninput();
+}
+async function dvPut(id,i,p){
+  if(p.gone)return;
+  dvSt('Enregistrement…');
+  const r=await sb.from('notes_diapo').upsert({user_id:S.user.id,document_id:id,diapo:i,page:p.page,kind:p.kind,texte:p.kind==='texte'?p.t:null,fichier_path:p.path||null},{onConflict:'user_id,document_id,diapo,page'}).select();
+  if(refused(r))return dvSt('Erreur : '+refused(r),1);
+  dvSt('Enregistré');
+}
+function dvAdd(kind){
+  const i=DV.i,L=DV.notes[i]=DV.notes[i]||[];
+  const p={page:L.length?Math.max(...L.map(x=>x.page))+1:1,kind,t:'',path:null,c:''};
+  L.push(p);DV.pi[i]=L.length-1;
+  dvPut(DV.id,i,p);
+  dvDraw();
+}
+async function dvDel(){
+  const {L,k,p}=dvCur();if(!p)return;
+  p.gone=true;const id=DV.id,i=DV.i;
+  ['dt','dd'].forEach(x=>{const m=x+id+':'+i+':'+p.page;if(TM[m]){clearTimeout(TM[m].id);delete TM[m]}});
+  L.splice(k,1);DV.pi[i]=Math.max(0,k-1);dvDraw();
+  const r=await sb.from('notes_diapo').delete().eq('user_id',S.user.id).eq('document_id',id).eq('diapo',i).eq('page',p.page);
+  if(r.error)return dvSt('Erreur : '+fr(r.error.message),1);
+  if(p.path)await sb.storage.from('perso').remove([p.path]);
+}
+function dvPen(j){DV.pen.c=j;DV.pen.er=false;dvEd()}
+function dvEr(){DV.pen.er=!DV.pen.er;dvEd()}
+function dvClear(){const {p}=dvCur(),c=$('dvd');if(!c||!p)return;c.getContext('2d').clearRect(0,0,c.width,c.height);p.c='';dvQDraw(DV.id,DV.i,p)}
+function dvQDraw(id,i,p){dvSt('Modifications non enregistrées…');later('dd'+id+':'+i+':'+p.page,()=>{p.q=(p.q||Promise.resolve()).then(()=>dvSaveDraw(id,i,p));return p.q},1300)}
+async function dvSaveDraw(id,i,p){
+  const old=p.path;if(p.gone||(!p.c&&!old))return;
+  dvSt('Enregistrement…');
+  try{
+    if(p.c){
+      const path=S.user.id+'/diapos/'+id+'-'+i+'-'+p.page+'-'+Date.now()+'.png';
+      const u=await sb.storage.from('perso').upload(path,d2b(p.c),{contentType:'image/png',upsert:false});
+      if(u.error)throw u.error;p.path=path;
+    }else p.path=null;
+    await dvPut(id,i,p);
+    if(old&&old!==p.path)await sb.storage.from('perso').remove([old]);
+  }catch(e){dvSt('Erreur : '+fr(e.message||String(e)),1)}
+}
+async function dvLoadDraw(p){
+  if(p.ld)return;p.ld=1;
+  try{const r=await sb.storage.from('perso').download(p.path);if(r.error)throw r.error;if(p.c===undefined)p.c=await b2d(r.data)}
+  catch(e){if(p.c===undefined)p.c='';dvSt('Dessin illisible : '+(e.message||e),1)}
+  const {p:q}=dvCur();if(q===p&&$('dvd'))dvBindDraw(p);
+}
+function dvBindDraw(p){
+  const cv=$('dvd');if(!cv)return;const x=cv.getContext('2d'),id=DV.id,i=DV.i,wait=p.path&&p.c===undefined;
+  if(p.c){const im=new Image();im.onload=()=>{if($('dvd')===cv)x.drawImage(im,0,0)};im.src=p.c}
+  if(wait){cv.style.opacity='.5';dvLoadDraw(p)}else cv.style.opacity='';
+  const acc=getComputedStyle($('app')).getPropertyValue('--acc').trim()||'#4f8ff0';
+  x.lineCap='round';x.lineJoin='round';
+  const set=()=>{const e=DV.pen.er;x.globalCompositeOperation=e?'destination-out':'source-over';x.strokeStyle=DVC[DV.pen.c]||acc;x.lineWidth=e?DV.pen.w*5:DV.pen.w};
+  let on=false;
+  const pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
+  cv.onpointerdown=e=>{if(wait)return;on=true;set();try{cv.setPointerCapture(e.pointerId)}catch(_){}const[a,b]=pt(e);x.beginPath();x.moveTo(a,b);x.lineTo(a+.01,b);x.stroke();e.preventDefault()};
+  cv.onpointermove=e=>{if(!on)return;const[a,b]=pt(e);x.lineTo(a,b);x.stroke()};
+  cv.onpointerup=cv.onpointercancel=()=>{if(!on)return;on=false;try{p.c=cv.toDataURL();dvQDraw(id,i,p)}catch(e){}};
+}
+async function dvShowPhoto(p){
+  try{const u=await signed('perso',p.path),e=$('dvph');if(e&&dvCur().p===p)e.innerHTML=`<img class="dvph" src="${esc(u)}" alt="Photo">`}
+  catch(e){const h=$('dvph');if(h)h.innerHTML='<span class="note bad">Photo illisible : '+esc(e.message||e)+'</span>'}
+}
+async function dvPhoto(file){
+  const {p}=dvCur();if(!file||!p)return;
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type))return dvSt('Format accepté : JPEG, PNG ou WebP.',1);
+  if(file.size>10*1024*1024)return dvSt('Photo trop lourde (10 Mo maximum).',1);
+  const id=DV.id,i=DV.i,old=p.path;dvSt('Envoi de la photo…');
+  try{
+    const path=S.user.id+'/diapos/'+id+'-'+i+'-'+p.page+'-'+Date.now()+'.'+(file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg');
+    const u=await sb.storage.from('perso').upload(path,file,{contentType:file.type,upsert:false});
+    if(u.error)throw u.error;p.path=path;
+    await dvPut(id,i,p);
+    if(old)await sb.storage.from('perso').remove([old]);
+    if(DV.id===id&&DV.i===i)dvEd();
+  }catch(e){dvSt('Erreur : '+fr(e.message||String(e)),1)}
+}
+document.addEventListener('keydown',e=>{
+  if(!$('dv')||DV.st!=='ok'||/INPUT|TEXTAREA|SELECT/.test((e.target||{}).tagName||''))return;
+  if(e.key==='ArrowLeft')dvGo(DV.i-1);else if(e.key==='ArrowRight')dvGo(DV.i+1);
+});
+window.addEventListener('resize',()=>later('dvr',()=>{if(DV.pdf&&$('dvc'))dvSlide(DV.i)},300));
+
 /* Cours */
 function selDoc(id){S.docId=id;showPv(id)}
 function coursPanels(){
@@ -1543,7 +1750,7 @@ function coursPanels(){
   const list=(A,vide)=>A.length?'<ul class="q">'+A.map(d=>`<li><button class="lnk${sel&&sel.id===d.id?' on':''}" onclick="selDoc('${d.id}')">${esc(d.titre)}</button></li>`).join('')+'</ul>':`<div class="empty">${vide}</div>`;
   return `<section class="panel"><h3>Cours du prof (${P.length})</h3>${list(P,'Aucun cours du prof pour le moment.')}
       <h3 style="margin-top:16px">Notes de cours des étudiants (${N.length})</h3>${list(N,'Aucune note de cours pour le moment.')}</section>
-      <section class="panel"><h3>Aperçu</h3>${pvHtml(sel)}${dlBtn(sel)}</section>`;
+      <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}</section>`;
 }
 
 /* TDs du prof (page Exos) */
@@ -1554,7 +1761,7 @@ function tdHtml(){
   <p class="lead">Les feuilles de TD du chapitre et leurs corrigés, rangés séparément. Dépose-les depuis l'onglet Dépôt (types « TD du prof » et « Corrigé de TD »).</p>
   <div class="grid2"><section class="panel"><h3>Énoncés (${L.length})</h3>${list(L,'Aucun TD dans ce chapitre pour le moment.')}
     <h3 style="margin-top:16px">Corrigés (${C.length})</h3>${list(C,'Aucun corrigé pour le moment.')}</section>
-  <section class="panel"><h3>Aperçu</h3>${pvHtml(sel)}${dlBtn(sel)}</section></div>`;
+  <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}</section></div>`;
 }
 
 /* Annales */
@@ -1607,10 +1814,10 @@ function annHtml(){
     sel=A.find(d=>d.id===S.docId),T=['Sujet','Correction officielle','Mes corrections'];
   let body;
   if(!sel)body='<div class="preview empty">Sélectionne une annale pour commencer.</div>';
-  else if(S.tab===0)body=pvHtml(sel)+dlBtn(sel);
+  else if(S.tab===0)body=dvHtml(sel)+dlBtn(sel);
   else if(S.tab===1){
     const c=corsOf(sel.id),x=c.find(d=>d.id===S.corId)||c[0];
-    body=x?(c.length>1?'<div class="row">'+c.map(d=>`<button class="lvl${d.id===x.id?' on':''}" onclick="selCor('${d.id}')">${esc(d.titre)}</button>`).join('')+'</div>':'')+pvHtml(x)+dlBtn(x)
+    body=x?(c.length>1?'<div class="row">'+c.map(d=>`<button class="lvl${d.id===x.id?' on':''}" onclick="selCor('${d.id}')">${esc(d.titre)}</button>`).join('')+'</div>':'')+dvHtml(x)+dlBtn(x)
       :'<div class="preview empty">Pas de correction officielle pour ce sujet.</div>';
   }else{
     body=`<div class="row"><label class="btn" style="cursor:pointer">Ajouter des photos
