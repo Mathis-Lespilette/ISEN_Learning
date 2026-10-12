@@ -1400,7 +1400,7 @@ const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY):null;
 const DB={intro:''};
 const ed=()=>S.edit&&S.role==='admin';
-const fr=m=>/invalid login/i.test(m)?'E-mail ou mot de passe incorrect.'
+const fr=m=>/banned/i.test(m)?'Ce compte a été suspendu par un administrateur.':/invalid login/i.test(m)?'E-mail ou mot de passe incorrect.'
   :/database error saving new user|signups? (not allowed|disabled)/i.test(m)?"Inscription refusée : code d'invitation invalide ou inscriptions fermées."
   :/already registered/i.test(m)?'Cet e-mail a déjà un compte.':/not confirmed/i.test(m)?"Confirme d'abord ton e-mail.":m;
 const flash=(m,ko)=>{S.msg=m;S.ko=!!ko;render()};
@@ -1432,9 +1432,10 @@ async function loadData(){
 async function enter(user){
   S.user=user;S.loading=true;S.err='';render();
   try{
-    let p=await sb.from('profiles').select('pseudo,role,promo,promo_verifiee,classement_exos,classement_reel').eq('id',user.id).single();
+    let p=await sb.from('profiles').select('pseudo,role,promo,promo_verifiee,classement_exos,classement_reel,banni').eq('id',user.id).single();
     if(p.error)p=await sb.from('profiles').select('pseudo,role').eq('id',user.id).single();
     if(p.error)throw p.error;
+    if(p.data.banni){await sb.auth.signOut();S.user=null;S.role='';S.loading=false;S.msg='Ce compte a été suspendu par un administrateur.';S.ko=true;return render()}
     S.prof={promo:p.data.promo||null,verif:!!p.data.promo_verifiee,cex:!!p.data.classement_exos,cre:!!p.data.classement_reel};S.G={};S.gp=null;S.cl.promo=S.prof.promo;
     S.pseudo=p.data.pseudo;S.role=p.data.role;await annLoad();
     await loadData();await loadMine();
@@ -1945,8 +1946,17 @@ function admTabs(){
   const todo=(S.admU||[]).filter(u=>!u.promo_verifiee).length,pend=DB.docs.filter(d=>d.statut==='en_attente').length,n={depots:pend,comptes:todo};
   return `<div class="tabs" style="--c:#3b6fd4">${Object.keys(AT).map(k=>`<button class="tab${S.at===k?' on':''}" onclick="S.at='${k}';render()">${AT[k]}${n[k]?` <span class="badge">${n[k]}</span>`:''}</button>`).join('')}</div>`;
 }
+async function admBan(id,on){
+  if(on&&S.cfb!==id){S.cfb=id;return render()}
+  const m=on?($('bm_'+id)||{}).value||'':'';
+  const r=await sb.rpc('bannir_compte',{p_id:id,p_ban:on,p_motif:m});
+  S.cfb=null;
+  if(r.error)return flash(fr(r.error.message)+(/function|bannir/i.test(r.error.message)?' (maj-bannir.sql lancé ?)':''),1);
+  const u=S.admU.find(x=>x.id===id);u.banni=on;u.banni_motif=on?m.trim()||null:null;
+  flash(on?'Compte banni : connexion bloquée.':'Compte débanni.');
+}
 async function admLoadU(){
-  const [u,a]=await Promise.all([sb.from('profiles').select('id,pseudo,role,promo,promo_verifiee,created_at').order('created_at'),sb.from('acces_promo').select('promo,annees,voir_recent')]);
+  const [u,a]=await Promise.all([sb.from('profiles').select('id,pseudo,role,promo,promo_verifiee,created_at,banni,banni_motif').order('created_at'),sb.from('acces_promo').select('promo,annees,voir_recent')]);
   S.admU=u.error?null:(u.data||[]);S.admUe=u.error?u.error.message:'';
   S.pa={};S.paE=a.error?a.error.message:'';(a.data||[]).forEach(x=>{S.pa[x.promo]={annees:x.annees,rec:!!x.voir_recent}});
   if(S.v==='admin')render();
@@ -1956,14 +1966,17 @@ const promoList=()=>{const s=new Set([acadYear(),acadYear()-1]);(S.admU||[]).for
 const admUsers=()=>{
   if(S.admUe)return `<section class="panel"><h3>Comptes</h3><p class="bad">${esc(S.admUe)}</p></section>`;
   if(!S.admU)return `<section class="panel"><h3>Comptes</h3><div class="empty">Chargement…</div></section>`;
-  const f=S.cft||'all',L=S.admU.filter(u=>f==='all'||!u.promo_verifiee).sort((a,b)=>(a.promo_verifiee-b.promo_verifiee)||String(a.pseudo).localeCompare(b.pseudo));
+  const f=S.cft||'all',L=S.admU.filter(u=>f==='all'?true:f==='ban'?u.banni:!u.promo_verifiee).sort((a,b)=>(a.promo_verifiee-b.promo_verifiee)||String(a.pseudo).localeCompare(b.pseudo));
   return `<section class="panel"><h3>Comptes (${S.admU.length})</h3>
-    <p class="note" style="margin:0 0 8px">Vérifie la promo de chaque compte. Coche « vérifiée » : le membre ne pourra plus la modifier.</p>
-    <div class="tabs" style="--c:#3b6fd4;margin-bottom:10px"><button class="tab${f==='all'?' on':''}" onclick="S.cft='all';render()">Tous</button><button class="tab${f==='todo'?' on':''}" onclick="S.cft='todo';render()">À vérifier (${S.admU.filter(u=>!u.promo_verifiee).length})</button></div>
-    ${L.length?`<ul class="q">${L.map(u=>`<li><span>${esc(u.pseudo)} <span class="note" style="margin:0">${u.role==='admin'?'admin':''}</span></span>
+    <p class="note" style="margin:0 0 8px">Vérifie la promo de chaque compte. Coche « vérifiée » : le membre ne pourra plus la modifier. « Bannir » bloque la connexion du compte (réversible).</p>
+    <div class="tabs" style="--c:#3b6fd4;margin-bottom:10px"><button class="tab${f==='all'?' on':''}" onclick="S.cft='all';render()">Tous</button><button class="tab${f==='todo'?' on':''}" onclick="S.cft='todo';render()">À vérifier (${S.admU.filter(u=>!u.promo_verifiee).length})</button><button class="tab${f==='ban'?' on':''}" onclick="S.cft='ban';render()">Bannis (${S.admU.filter(u=>u.banni).length})</button></div>
+    ${L.length?`<ul class="q">${L.map(u=>`<li><span>${esc(u.pseudo)} <span class="note" style="margin:0">${u.role==='admin'?'admin':''}</span>${u.banni?` <span class="bad">banni${u.banni_motif?' : '+esc(u.banni_motif):''}</span>`:''}</span>
     <span class="row" style="margin:0"><input type="number" id="au_${u.id}" value="${esc(u.promo||'')}" placeholder="promo" style="width:90px" aria-label="Promo de ${esc(u.pseudo)}">
     <label class="note" style="margin:0"><input type="checkbox" id="av_${u.id}" ${u.promo_verifiee?'checked':''}> vérifiée</label>
-    <button class="btn" onclick="admSaveU('${u.id}')">Enregistrer</button></span></li>`).join('')}</ul>`:'<div class="empty">Rien à vérifier.</div>'}</section>`;
+    <button class="btn" onclick="admSaveU('${u.id}')">Enregistrer</button>
+    ${u.role==='admin'||u.id===S.user.id?'':u.banni?`<button class="btn" onclick="admBan('${u.id}',false)">Débannir</button>`
+      :S.cfb===u.id?`<input id="bm_${u.id}" placeholder="Motif (facultatif)" style="width:160px" aria-label="Motif du bannissement"><button class="btn" onclick="admBan('${u.id}',true)">Confirmer le ban</button><button class="btn" onclick="S.cfb=null;render()">Annuler</button>`
+      :`<button class="btn" onclick="admBan('${u.id}',true)">Bannir</button>`}</span></li>`).join('')}</ul>`:`<div class="empty">${f==='ban'?'Aucun compte banni.':'Rien à vérifier.'}</div>`}</section>`;
 };
 /* promos & accès */
 function paAuto(p,on){document.querySelectorAll('.py_'+p).forEach(i=>{i.disabled=on;if(on)i.checked=pAutoYears(p).includes(Number(i.value))})}
