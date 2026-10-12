@@ -108,6 +108,16 @@ ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;b
 .dvcol{width:22px;height:22px;padding:0;border:2px solid var(--line);border-radius:50%}
 .dvcol.on{border-color:var(--txt)}
 .dvph{max-width:100%;border:1px solid var(--line);display:block;margin-top:8px}
+.edb{border:1px dashed var(--acc);padding:14px 16px;margin:14px 0 20px;background:#0a1226;display:flex;flex-direction:column;gap:12px}
+.edb h4{margin:0;font-size:11px;color:var(--acc);text-transform:uppercase;letter-spacing:.1em}
+.edr{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.edr label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--mut)}
+.edr input[type=text]{min-width:260px}
+.edr .sp{flex:1}
+.edcs{display:flex;flex-direction:column;gap:10px;margin:0 0 14px}
+.edc{border:1px solid var(--line);padding:12px 14px;background:var(--panel)}
+.btn.danger{border-color:#c0392b;color:#ff8a80}
+.btn.danger.go{background:#5c1a14;color:#fff}
 .pv{width:100%;height:520px;border:1px solid var(--line);background:#fff;display:block}
 .pvi{max-width:100%;border:1px solid var(--line);display:block}
 .ovl{position:fixed;inset:0;background:rgba(2,5,14,.82);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -194,7 +204,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.pk=null;render();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){admLoadU()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;render();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){admLoadU()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -235,7 +245,10 @@ const views={
   },
   dom(){
     const all=CHAPS[S.d].map((c,i)=>({c,i})),orph=S.y===2?all.filter(x=>!x.c.mid):[],mods=yMods();
-    const cards=l=>l.length?'<div class="cards">'+l.map(({c,i})=>`<button class="card topic chap" onclick="S.ch=${i};go('chap')"><h2>${c.n}</h2><p>Cours, exos et annales.</p></button>`).join('')+'</div>'
+    const cards=l=>l.length&&ed()?'<div class="edcs">'+l.map(({c,i})=>`<div class="edc"><div class="edr"><button class="btn" onclick="S.ch=${i};go('chap')">Ouvrir ›</button>
+      <label>Titre du chapitre<input type="text" id="cc_${c.id}" value="${esc(c.raw)}" maxlength="200"></label>
+      <button class="btn" onclick="chapRename('${c.id}')">Enregistrer</button><span class="sp"></span>${delBtn('c'+c.id,"chapDelete('"+c.id+"')",'Supprimer le chapitre')}</div></div>`).join('')+'</div>'
+      :l.length?'<div class="cards">'+l.map(({c,i})=>`<button class="card topic chap" onclick="S.ch=${i};go('chap')"><h2>${c.n}</h2><p>Cours, exos et annales.</p></button>`).join('')+'</div>'
       :'<div class="empty">Aucun chapitre dans ce module pour le moment.</div>';
     const blk=m=>`<section class="mod"><h2 class="mh">Module ${m.num}${m.raw?` <small>${esc(m.raw)}</small>`:''} <span class="badge">promo ${m.pr}</span></h2>${ed()?modEdit(m):''}${S.d==='maths'&&S.y===2&&m.num===3&&m.pr===2025?partielCard():''}${cards(all.filter(x=>x.c.mid===m.id))}${ed()?addChapHtml(m.id):''}</section>`;
     return `<div class="row"><button class="btn" onclick="go('home')">‹ ${YN[S.y]}</button></div>
@@ -1455,7 +1468,7 @@ function topicList(){
   <h1>Exos – ${CHAP().n}</h1>
   <p class="lead">Choisis d'abord un type d'exercice, puis le niveau d'aide.</p>`+
   (t.length?'<div class="cards">'+t.map((x,i)=>`<button class="card topic" onclick="S.topic=${i};S.ex=null;render()"><h2>${x}</h2><p>Liste d'exercices et suivi de tes résultats.</p></button>`).join('')+'</div>'
-  :`<div class="empty">Aucun type d'exercice dans ce chapitre pour le moment.</div>`)+tdHtml();
+  :`<div class="empty">Aucun type d'exercice dans ce chapitre pour le moment.</div>`)+typeEdit()+tdHtml();
 }
 
 function render(){
@@ -1575,27 +1588,110 @@ async function saveMod(id){
   if(refused(r))return flash(refused(r),1);
   await loadData();flash('Module enregistré.');
 }
+
+/* ===== Édition en contexte : suppression + modifs rangées niveau par niveau ===== */
+const delBtn=(k,fn,lab)=>S.cfx===k?`<button class="btn danger go" onclick="${fn}">Confirmer : supprimer</button><button class="btn" onclick="S.cfx=null;render()">Annuler</button>`:`<button class="btn danger" onclick="${fn}">${lab}</button>`;
+async function chapPurge(id){
+  const a=await sb.from('documents').update({statut:'en_attente',chapitre_id:null,annale_id:null}).eq('chapitre_id',id).select('id');
+  if(a.error)return a.error.message;
+  const r=await sb.from('chapitres').delete().eq('id',id).select('id');
+  return r.error?r.error.message:(!r.data||!r.data.length)?'Suppression refusée (droits insuffisants).':'';
+}
+async function chapRename(id){
+  const t=($('cc_'+id)||{value:''}).value.trim();if(!t)return flash('Le titre ne peut pas être vide.',1);
+  const r=await sb.from('chapitres').update({titre:t}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await loadData();flash('Chapitre enregistré.');
+}
+async function chapDelete(id){
+  if(S.cfx!=='c'+id){S.cfx='c'+id;return render()}
+  S.cfx=null;const e=await chapPurge(id);if(e)return flash(e,1);
+  await Promise.all([loadData(),reloadDocs()]);
+  if(S.v==='chap'){S.ch=null;go('dom')}
+  flash('Chapitre supprimé. Ses documents sont repartis dans « Dépôts » (en attente).');
+}
+async function modDelete(id){
+  if(S.cfx!=='m'+id){S.cfx='m'+id;return render()}
+  S.cfx=null;
+  for(const c of CHAPS[S.d].filter(c=>c.mid===id)){const e=await chapPurge(c.id);if(e)return flash(e,1)}
+  const r=await sb.from('modules').delete().eq('id',id).select('id');
+  if(r.error)return flash(fr(r.error.message),1);
+  await Promise.all([loadData(),reloadDocs()]);flash('Module supprimé (avec ses chapitres).');
+}
+async function docSave(id){
+  const t=($('dt_'+id)||{value:''}).value.trim();if(!t)return flash('Le titre ne peut pas être vide.',1);
+  const y=$('dy_'+id),row={titre:t.slice(0,200)};if(y)row.annee=y.value?Number(y.value):null;
+  const r=await sb.from('documents').update(row).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await reloadDocs();flash('Document enregistré.');
+}
+async function docBack(id){
+  const r=await sb.from('documents').update({statut:'en_attente',chapitre_id:null,annale_id:null}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  S.docId=null;S.pvId=null;await reloadDocs();flash('Document renvoyé dans « Dépôts » pour être re-trié.');
+}
+function docEdit(d){
+  if(!ed()||!d)return '';
+  return `<div class="edb"><h4>Modifier ce document</h4><div class="edr">
+    <label>Titre<input type="text" id="dt_${d.id}" value="${esc(d.titre)}" maxlength="200"></label>
+    ${d.type==='annale'?`<label>Année<input type="number" id="dy_${d.id}" value="${esc(d.annee||'')}" style="width:100px"></label>`:''}
+    <button class="btn" onclick="docSave('${d.id}')">Enregistrer</button><button class="btn" onclick="docBack('${d.id}')">Renvoyer en tri</button><span class="sp"></span>
+    ${S.cfd===d.id?`<button class="btn danger go" onclick="admDelete('${d.id}')">Confirmer : supprimer</button><button class="btn" onclick="S.cfd=null;render()">Annuler</button>`:`<button class="btn danger" onclick="admDelete('${d.id}')">Supprimer le document</button>`}</div></div>`;
+}
+async function typeAdd(){
+  const t=($('nt_t')||{value:''}).value.trim(),n=parseInt(($('nt_n')||{value:''}).value,10)||0;if(!t)return flash("Donne un titre au type d'exercice.",1);
+  const r=await sb.from('types_exo').insert({chapitre_id:CHAP().id,titre:t,nb_exercices:n,ordre:CHAP().ty.length+1}).select();
+  if(refused(r))return flash(refused(r),1);
+  await loadData();flash("Type d'exercice ajouté.");
+}
+async function typeSave(id){
+  const t=($('ty_t'+id)||{value:''}).value.trim(),n=parseInt(($('ty_n'+id)||{value:''}).value,10);
+  if(!t||!(n>=0))return flash('Titre et nombre d\'exercices valides requis.',1);
+  const r=await sb.from('types_exo').update({titre:t,nb_exercices:n}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await loadData();flash("Type d'exercice enregistré.");
+}
+async function typeDelete(id){
+  if(S.cfx!=='t'+id){S.cfx='t'+id;return render()}
+  S.cfx=null;const r=await sb.from('types_exo').delete().eq('id',id).select('id');
+  if(r.error)return flash(fr(r.error.message),1);
+  S.topic=null;await loadData();flash("Type d'exercice supprimé (avec les résultats associés).");
+}
+function typeEdit(){
+  if(!ed())return '';
+  const T=CHAP().ty;
+  return `<div class="edb"><h4>Types d'exercices du chapitre</h4>
+    ${T.map(x=>`<div class="edr"><label>Titre<input type="text" id="ty_t${x.id}" value="${esc(x.titre)}" maxlength="200"></label>
+      <label>Nb d'exercices<input type="number" id="ty_n${x.id}" min="0" value="${x.nb_exercices||0}" style="width:100px"></label>
+      <button class="btn" onclick="typeSave('${x.id}')">Enregistrer</button>${x.generateur?`<span class="note" style="margin:0">générateur : ${esc(x.generateur)}</span>`:''}<span class="sp"></span>
+      ${delBtn('t'+x.id,"typeDelete('"+x.id+"')",'Supprimer')}</div>`).join('')||'<div class="note" style="margin:0">Aucun type pour le moment.</div>'}
+    <div class="edr" style="border-top:1px solid var(--line);padding-top:12px"><label>Nouveau type<input type="text" id="nt_t" placeholder="Titre" maxlength="200"></label>
+      <label>Nb d'exercices<input type="number" id="nt_n" min="0" value="0" style="width:100px"></label><button class="btn" onclick="typeAdd()">Ajouter</button></div></div>`;
+}
 function introHtml(){
   const t=DB.intro||'Cours, exercices types et annales de la promo, rangés par année, matière, module puis chapitre. Choisis ton année pour commencer.';
-  return ed()?`<textarea id="ei" maxlength="10000" aria-label="Texte d'accueil">${esc(t)}</textarea><div class="row" style="margin-top:8px"><button class="btn" onclick="saveIntro()">Enregistrer le texte</button></div>`
+  return ed()?`<div class="edb"><h4>Texte d'accueil</h4><textarea id="ei" maxlength="10000" aria-label="Texte d'accueil">${esc(t)}</textarea><div class="edr"><button class="btn" onclick="saveIntro()">Enregistrer le texte</button></div></div>`
     :`<p class="lead">${esc(t)}</p>`;
 }
 function addChapHtml(mid){
-  return ed()?`<div class="row" style="margin-top:12px"><input type="text" id="nc_${mid}" placeholder="Titre du nouveau chapitre" aria-label="Titre du nouveau chapitre"><button class="btn" onclick="addChap('${mid}')">Ajouter un chapitre à ce module</button></div>`:'';
+  return ed()?`<div class="edb"><h4>Ajouter un chapitre à ce module</h4><div class="edr"><label>Titre<input type="text" id="nc_${mid}" placeholder="Titre du nouveau chapitre" aria-label="Titre du nouveau chapitre"></label><button class="btn" onclick="addChap('${mid}')">Ajouter le chapitre</button></div></div>`:'';
 }
 function addModHtml(){
-  return ed()?`<div class="row"><input type="number" id="nmn" min="1" style="width:90px" placeholder="N°" aria-label="Numéro du module"><input type="text" id="nmt" placeholder="Titre du module (facultatif)" aria-label="Titre du module"><input type="number" id="nmp" min="2000" max="2100" value="${acadYear()-S.y+1}" style="width:90px" aria-label="Promo du module" title="Promo à qui ce module est enseigné"><button class="btn" onclick="addMod()">Ajouter un module en ${YN[S.y]}</button></div>`:'';
+  return ed()?`<div class="edb"><h4>Nouveau module en ${YN[S.y]}</h4><div class="edr"><label>N°<input type="number" id="nmn" min="1" style="width:80px" placeholder="1" aria-label="Numéro du module"></label><label>Titre (facultatif)<input type="text" id="nmt" placeholder="Titre du module" aria-label="Titre du module"></label><label>Promo<input type="number" id="nmp" min="2000" max="2100" value="${acadYear()-S.y+1}" style="width:100px" aria-label="Promo du module" title="Promo à qui ce module est enseigné"></label><button class="btn" onclick="addMod()">Ajouter le module</button></div></div>`:'';
 }
 function modEdit(m){
-  return `<div class="row"><input type="number" id="mn_${m.id}" min="1" value="${m.num}" style="width:90px" aria-label="Numéro du module"><input type="text" id="mt_${m.id}" value="${esc(m.raw)}" placeholder="Titre du module (facultatif)" aria-label="Titre du module"><button class="btn" onclick="saveMod('${m.id}')">Enregistrer le module</button></div>`;
+  const n=CHAPS[S.d].filter(c=>c.mid===m.id).length;
+  return `<div class="edb"><h4>Modifier le module</h4><div class="edr"><label>N°<input type="number" id="mn_${m.id}" min="1" value="${m.num}" style="width:80px" aria-label="Numéro du module"></label><label>Titre (facultatif)<input type="text" id="mt_${m.id}" value="${esc(m.raw)}" placeholder="Titre du module" aria-label="Titre du module"></label><button class="btn" onclick="saveMod('${m.id}')">Enregistrer le module</button><span class="sp"></span>
+    ${S.cfx==='m'+m.id?`<span class="bad">Supprime le module${n?' et ses '+n+' chapitre'+(n>1?'s':''):''} !</span>`:''}${delBtn('m'+m.id,"modDelete('"+m.id+"')",'Supprimer le module')}</div></div>`;
 }
 function partielCard(){
   return `<div class="cards" style="margin-bottom:14px"><button class="card topic" onclick="go('partiel')"><h2>Entraînement au Partiel</h2><p>Partiel blanc chronométré et exercices par partie, au barème du prof.</p></button></div>`;
 }
 function chapHead(c){
-  return ed()?`<div class="plan" style="max-width:520px;margin-bottom:14px"><input type="text" id="ec" value="${esc(c.raw)}" aria-label="Titre du chapitre">
-    <textarea id="ed" placeholder="Description du chapitre (facultatif)" aria-label="Description du chapitre">${esc(c.desc)}</textarea>
-    <div class="row" style="margin:0"><button class="btn" onclick="saveChap()">Enregistrer le chapitre</button></div></div>`
+  return ed()?`<div class="edb" style="max-width:640px"><h4>Modifier le chapitre</h4>
+    <div class="edr"><label style="flex:1">Titre<input type="text" id="ec" value="${esc(c.raw)}" aria-label="Titre du chapitre" style="width:100%"></label></div>
+    <div class="edr"><label style="flex:1">Description (facultatif)<textarea id="ed" placeholder="Description du chapitre" aria-label="Description du chapitre">${esc(c.desc)}</textarea></label></div>
+    <div class="edr"><button class="btn" onclick="saveChap()">Enregistrer le chapitre</button><span class="sp"></span>${delBtn('c'+c.id,"chapDelete('"+c.id+"')",'Supprimer le chapitre')}</div></div>`
     :`<h1>${c.n}</h1><p class="lead">${c.desc?esc(c.desc):'Que veux-tu faire dans ce chapitre ?'}</p>`;
 }
 
@@ -1838,7 +1934,7 @@ function coursPanels(){
   const list=(A,vide)=>A.length?'<ul class="q">'+A.map(d=>`<li><button class="lnk${sel&&sel.id===d.id?' on':''}" onclick="selDoc('${d.id}')">${esc(d.titre)}</button></li>`).join('')+'</ul>':`<div class="empty">${vide}</div>`;
   return `<section class="panel"><h3>Cours du prof (${P.length})</h3>${list(P,'Aucun cours du prof pour le moment.')}
       <h3 style="margin-top:16px">Notes de cours des étudiants (${N.length})</h3>${list(N,'Aucune note de cours pour le moment.')}</section>
-      <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}</section>`;
+      <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}${docEdit(sel)}</section>`;
 }
 
 /* TDs du prof (page Exos) */
@@ -1849,7 +1945,7 @@ function tdHtml(){
   <p class="lead">Les feuilles de TD du chapitre et leurs corrigés, rangés séparément. Dépose-les depuis l'onglet Dépôt (types « TD du prof » et « Corrigé de TD »).</p>
   <div class="grid2"><section class="panel"><h3>Énoncés (${L.length})</h3>${list(L,'Aucun TD dans ce chapitre pour le moment.')}
     <h3 style="margin-top:16px">Corrigés (${C.length})</h3>${list(C,'Aucun corrigé pour le moment.')}</section>
-  <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}</section></div>`;
+  <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}${docEdit(sel)}</section></div>`;
 }
 
 /* Annales */
@@ -1902,10 +1998,10 @@ function annHtml(){
     sel=A.find(d=>d.id===S.docId),T=['Sujet','Correction officielle','Mes corrections'];
   let body;
   if(!sel)body='<div class="preview empty">Sélectionne une annale pour commencer.</div>';
-  else if(S.tab===0)body=dvHtml(sel)+dlBtn(sel);
+  else if(S.tab===0)body=dvHtml(sel)+dlBtn(sel)+docEdit(sel);
   else if(S.tab===1){
     const c=corsOf(sel.id),x=c.find(d=>d.id===S.corId)||c[0];
-    body=x?(c.length>1?'<div class="row">'+c.map(d=>`<button class="lvl${d.id===x.id?' on':''}" onclick="selCor('${d.id}')">${esc(d.titre)}</button>`).join('')+'</div>':'')+dvHtml(x)+dlBtn(x)
+    body=x?(c.length>1?'<div class="row">'+c.map(d=>`<button class="lvl${d.id===x.id?' on':''}" onclick="selCor('${d.id}')">${esc(d.titre)}</button>`).join('')+'</div>':'')+dvHtml(x)+dlBtn(x)+docEdit(x)
       :'<div class="preview empty">Pas de correction officielle pour ce sujet.</div>';
   }else{
     body=`<div class="row"><label class="btn" style="cursor:pointer">Ajouter des photos
@@ -1996,7 +2092,7 @@ async function admDelete(id){
   const d=DB.docs.find(x=>x.id===id),r=await sb.from('documents').delete().eq('id',id).select();
   if(refused(r))return flash(refused(r),1);
   await sb.storage.from('documents').remove([d.fichier_path]);
-  if(S.pvId===id)S.pvId=null;
+  if(S.pvId===id)S.pvId=null;if(S.docId===id)S.docId=null;if(S.corId===id)S.corId=null;
   await reloadDocs();flash('Document supprimé.');
 }
 function admDepots(){
