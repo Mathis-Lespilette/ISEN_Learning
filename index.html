@@ -196,9 +196,11 @@ const LV=[
 ];
 const S={open:{},y:null,user:null,role:'',pseudo:'',edit:false,loading:false,err:'',msg:'',ko:false,mode:'in',f:null,v:'home',d:'maths',lvl:0,ex:null,cf:false,var:0,gen:null,tab:0,topic:null,ch:null,big:false,N:null,pending:[],admin:false,photos:[],NR:{},RES:{},nst:'',nko:false,docId:null,pvId:null,pu:null,pe:'',corId:null,yr:'',busy:false,adm:{},cfd:null,cfp:null,G:{},gs:1,gm:null,prof:{},cl:{tab:'exos',promo:null,a:2,s:1,data:null,loading:false,err:''},admU:null,admUe:'',pa:{},paE:'',at:'depots',ann:null,cn:null,admP:[],acc:null,admA:null};
 /* Le rôle n'est plus modifiable depuis la console (S.role='admin' est ignoré) ; il est confirmé par la base */
-const setRole=(()=>{let r='';Object.defineProperty(S,'role',{get:()=>r,set:()=>{},enumerable:true,configurable:false});return v=>{r=v}})();
+let realRole=()=>'',vmOn=()=>false,vmSet=()=>{};
+const setRole=(()=>{let r='',vm=false;Object.defineProperty(S,'role',{get:()=>vm?'membre':r,set:()=>{},enumerable:true,configurable:false});realRole=()=>r;vmOn=()=>vm&&r==='admin';vmSet=v=>{vm=!!v&&r==='admin'};return v=>{r=v;if(v!=='admin')vm=false}})();
+function toggleVM(){vmSet(!vmOn());S.edit=false;if(vmOn()&&S.v==='admin')S.v='home';render()}
 async function verifAdmin(){
-  if(!sb||!S.user||S.role!=='admin')return;
+  if(!sb||!S.user||realRole()!=='admin')return;
   try{const r=await sb.rpc('is_admin');
     if(!r.error&&r.data===false){setRole('membre');S.edit=false;if(S.v==='admin')S.v='home';render()}}catch(e){}
 }
@@ -1504,14 +1506,15 @@ function render(){
     +['classement','depot','compte','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}${k==='compte'&&nfU()?` <span class="badge">${nfU()}</span>`:''}</button>`).join(''):'';
   $('who').innerHTML=S.user?`<div>${esc(S.pseudo)} (${S.role==='admin'?'admin':'membre'})</div><div>${S.prof&&S.prof.promo?'Promo '+esc(S.prof.promo)+(S.prof.verif?' ✓':' (à vérifier)'):'<a href="#" onclick="go(\'compte\');return false" style="color:inherit">Promo non renseignée</a>'}</div>`
     +(S.role==='admin'?`<button class="btn" aria-pressed="${S.edit}" onclick="toggleEdit()">Mode édition : ${S.edit?'oui':'non'}</button>`:'')
+    +(realRole()==='admin'?`<button class="btn" aria-pressed="${vmOn()}" onclick="toggleVM()" title="Affiche le site comme le voit un membre (affichage uniquement)">Voir comme un membre : ${vmOn()?'oui':'non'}</button>`:'')
     +`<button class="btn" onclick="logout()">Se déconnecter</button>`:'';
   let html;
   if(!S.user)html=views.login();
   else if(S.loading)html='<div class="empty">Chargement des données…</div>';
   else if(S.err)html=`<section class="panel"><p class="bad">Impossible de charger les données : ${esc(S.err)}</p><div class="row"><button class="btn" onclick="enter(S.user)">Réessayer</button></div></section>`;
   else html=views[S.v]();
-  $('view').innerHTML=(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html+gModal();
-  bindNotes();bindGen();ptBind();dvBind();mathRender();
+  $('view').innerHTML=(vmOn()?`<p class="note" role="status" style="margin:0 0 12px;border:1px dashed var(--line);padding:8px 12px">Vue membre : tu vois le site comme un membre (affichage seulement, tes droits restent ceux d'admin). <button class="btn" onclick="toggleVM()">Revenir en admin</button></p>`:'')+(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html+gModal();
+  bindNotes();bindGen();ptBind();dvBind();dcBind();mathRender();
 }
 /* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
 const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y4tkgIlrNoHjjsRSw_DjjA_NrBmdQfr';
@@ -1956,7 +1959,7 @@ function coursPanels(){
   const list=(A,vide)=>A.length?'<ul class="q">'+A.map(d=>`<li><button class="lnk${sel&&sel.id===d.id?' on':''}" onclick="selDoc('${d.id}')">${esc(d.titre)}</button></li>`).join('')+'</ul>':`<div class="empty">${vide}</div>`;
   return `<section class="panel"><h3>Cours du prof (${P.length})</h3>${list(P,'Aucun cours du prof pour le moment.')}
       <h3 style="margin-top:16px">Notes de cours des étudiants (${N.length})</h3>${list(N,'Aucune note de cours pour le moment.')}</section>
-      <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}${docEdit(sel)}</section>`;
+      <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}${dcHtml(sel)}${docEdit(sel)}</section>`;
 }
 
 /* TDs du prof (page Exos) */
@@ -1967,7 +1970,7 @@ function tdHtml(){
   <p class="lead">Les feuilles de TD du chapitre et leurs corrigés, rangés séparément. Dépose-les depuis l'onglet Dépôt (types « TD du prof » et « Corrigé de TD »).</p>
   <div class="grid2"><section class="panel"><h3>Énoncés (${L.length})</h3>${list(L,'Aucun TD dans ce chapitre pour le moment.')}
     <h3 style="margin-top:16px">Corrigés (${C.length})</h3>${list(C,'Aucun corrigé pour le moment.')}</section>
-  <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}${docEdit(sel)}</section></div>`;
+  <section class="panel"><h3>Aperçu</h3>${dvHtml(sel)}${dlBtn(sel)}${dcHtml(sel)}${docEdit(sel)}</section></div>`;
 }
 
 /* Annales */
@@ -2020,7 +2023,7 @@ function annHtml(){
     sel=A.find(d=>d.id===S.docId),T=['Sujet','Correction officielle','Mes corrections'];
   let body;
   if(!sel)body='<div class="preview empty">Sélectionne une annale pour commencer.</div>';
-  else if(S.tab===0)body=dvHtml(sel)+dlBtn(sel)+docEdit(sel);
+  else if(S.tab===0)body=dvHtml(sel)+dlBtn(sel)+dcHtml(sel)+docEdit(sel);
   else if(S.tab===1){
     const c=corsOf(sel.id),x=c.find(d=>d.id===S.corId)||c[0];
     body=x?(c.length>1?'<div class="row">'+c.map(d=>`<button class="lvl${d.id===x.id?' on':''}" onclick="selCor('${d.id}')">${esc(d.titre)}</button>`).join('')+'</div>':'')+dvHtml(x)+dlBtn(x)+docEdit(x)
@@ -2180,24 +2183,48 @@ const xcErr=e=>/relation|does not exist|schema cache/i.test(e.message||'')?"La f
 const xcChapName=id=>{for(const k in CHAPS){const c=CHAPS[k].find(x=>x.id===id);if(c)return c.raw}return'?'};
 async function cartesLoad(){
   if(!sb||!S.user||!CHAPS[S.d]||!CHAPS[S.d][S.ch])return;
-  const ch=CHAP().id,r=await sb.from('cartes').select('id,user_id,titre,statut,auteur,updated_at').eq('chapitre_id',ch).order('updated_at',{ascending:false});
-  S.xc={l:r.error?null:r.data,e:r.error?xcErr(r.error):'',ch};
-  if(S.v==='cartes')render();
+  const ch=CHAP().id,Q=c=>sb.from('cartes').select(c).eq('chapitre_id',ch).order('updated_at',{ascending:false});
+  let r=await Q('id,user_id,document_id,titre,statut,auteur,updated_at');
+  if(r.error&&/document_id/.test(r.error.message)){S.xcNoDoc=true;r=await Q('id,user_id,titre,statut,auteur,updated_at')}
+  S.xc={l:r.error?null:(r.data||[]),e:r.error?xcErr(r.error):'',ch};
+  if(S.v==='cartes')render();dcFill();
 }
 async function xcQLoad(){
   if(!sb||!S.user||S.role!=='admin')return;
   const r=await sb.from('cartes').select('id,user_id,chapitre_id,titre,statut,auteur,updated_at').eq('statut','proposee').order('updated_at',{ascending:false});
-  S.xcq=r.error?[]:r.data;S.xcqe=r.error?xcErr(r.error):'';
+  S.xcq=r.error?[]:(r.data||[]);S.xcqe=r.error?xcErr(r.error):'';
   if(S.v==='admin')render();
 }
-function xcRefresh(){if(S.v==='cartes')cartesLoad();if(S.role==='admin')xcQLoad()}
+function xcRefresh(){if(S.v==='cartes')cartesLoad();else dcLoad();if(S.role==='admin')xcQLoad()}
+/* Cartes liées à un document (cours / annale) */
+const dcHtml=d=>d?`<div class="dcx" id="dcx" data-id="${d.id}" style="margin-top:14px"></div>`:'';
+function dcBind(){const el=$('dcx');if(!el)return;const id=el.dataset.id;if(!S.dc||S.dc.id!==id){S.dc={id,l:null};dcLoad()}else dcFill()}
+async function dcLoad(){
+  const el=$('dcx');if(!el||!sb||!S.user||S.xcNoDoc)return dcFill();
+  const id=el.dataset.id,r=await sb.from('cartes').select('id,user_id,titre,statut,auteur,document_id').eq('document_id',id).order('updated_at',{ascending:false});
+  if(!S.dc||S.dc.id!==id)return;
+  S.dc.l=r.error?[]:(r.data||[]);S.dc.e=r.error?(/document_id|relation|does not exist|schema cache/i.test(r.error.message)?'off':xcErr(r.error)):'';dcFill();
+}
+function dcFill(){
+  const el=$('dcx');if(!el)return;
+  if(!S.dc||S.dc.id!==el.dataset.id||S.dc.l===null){el.innerHTML='';return}
+  if(S.dc.e==='off'||S.xcNoDoc){el.innerHTML='';return}
+  const id=el.dataset.id,L=S.dc.l,me=S.user.id,pub=L.filter(x=>x.statut==='publiee'),mine=L.filter(x=>x.user_id===me&&x.statut!=='publiee');
+  const row=(x,o)=>`<li><span><b>${esc(x.titre)}</b>${x.auteur&&o?` <span class="note" style="margin:0">· par ${esc(x.auteur)}</span>`:''} ${o?'':xcBadge(x.statut)}</span><button class="btn" onclick="xcOpen('${x.id}')">${o||x.statut==='privee'||S.role==='admin'?'Ouvrir':'Voir'}</button></li>`;
+  el.innerHTML=`<h3 style="margin:0 0 8px">Cartes pour ce document</h3>`
+    +(pub.length?`<p class="note" style="margin:0 0 4px">Cartes de l'admin</p><ul class="q">${pub.map(x=>row(x,1)).join('')}</ul>`:'')
+    +(mine.length?`<p class="note" style="margin:8px 0 4px">Mes cartes</p><ul class="q">${mine.map(x=>row(x,0)).join('')}</ul>`:'')
+    +(!pub.length&&!mine.length?'<p class="note" style="margin:0 0 8px">Aucune carte pour ce document.</p>':'')
+    +`<div class="row" style="margin:8px 0 0"><select id="dctp" aria-label="Modèle de carte">${xcTplOpts()}</select><button class="btn" onclick="xcNew('${id}')">Nouvelle carte pour ce document</button></div>`;
+}
 const xcBadge=s=>s==='publiee'?'<span class="badge ok">publiée</span>':s==='proposee'?'<span class="badge">proposée · en attente</span>':'<span class="badge">privée</span>';
 function cartesHtml(){
   const c=CHAP(),X=S.xc||{},L=X.l,me=S.user.id,adm=S.role==='admin';
   const pub=(L||[]).filter(x=>x.statut==='publiee'),mine=(L||[]).filter(x=>x.user_id===me),prop=adm?(L||[]).filter(x=>x.statut==='proposee'&&x.user_id!==me):[];
   const bt=(f,l,cls)=>`<button class="btn${cls?' '+cls:''}" onclick="${f}">${l}</button>`;
-  const pubRow=x=>`<li><span><b>${esc(x.titre)}</b>${x.auteur?` <span class="note" style="margin:0">· par ${esc(x.auteur)}</span>`:''}</span><span class="row" style="margin:0">${bt(`xcOpen('${x.id}')`,'Voir')}${bt(`xcCopy('${x.id}')`,'Copier dans mes cartes')}${adm?bt(`xcSet('${x.id}','privee','Carte retirée des cartes de l\\'admin.')`,'Dépublier')+delBtn('x'+x.id,`xcDel('${x.id}')`,'Supprimer'):''}</span></li>`;
-  const mineRow=x=>`<li><span><b>${esc(x.titre)}</b> ${xcBadge(x.statut)}</span><span class="row" style="margin:0">${bt(`xcOpen('${x.id}')`,x.statut==='privee'||adm?'Ouvrir':'Voir')}`
+  const dl=x=>{const d=x.document_id&&DB.docs.find(y=>y.id===x.document_id);return d?` <span class="note" style="margin:0">· ${esc(d.titre)}</span>`:''};
+  const pubRow=x=>`<li><span><b>${esc(x.titre)}</b>${dl(x)}${x.auteur?` <span class="note" style="margin:0">· par ${esc(x.auteur)}</span>`:''}</span><span class="row" style="margin:0">${bt(`xcOpen('${x.id}')`,'Voir')}${bt(`xcCopy('${x.id}')`,'Copier dans mes cartes')}${adm?bt(`xcSet('${x.id}','privee','Carte retirée des cartes de l\\'admin.')`,'Dépublier')+delBtn('x'+x.id,`xcDel('${x.id}')`,'Supprimer'):''}</span></li>`;
+  const mineRow=x=>`<li><span><b>${esc(x.titre)}</b>${dl(x)} ${xcBadge(x.statut)}</span><span class="row" style="margin:0">${bt(`xcOpen('${x.id}')`,x.statut==='privee'||adm?'Ouvrir':'Voir')}`
     +(adm?(x.statut==='publiee'?bt(`xcSet('${x.id}','privee','Carte retirée des cartes de l\\'admin.')`,'Dépublier'):bt(`xcSet('${x.id}','publiee','Carte publiée pour toute la promo.')`,'Publier'))
       :x.statut==='privee'?bt(`xcSet('${x.id}','proposee','Carte proposée à l\\'admin.')`,'Proposer à l\'admin'):x.statut==='proposee'?bt(`xcSet('${x.id}','privee','Proposition retirée.')`,'Retirer la proposition'):'')
     +(x.statut==='publiee'&&!adm?'':delBtn('x'+x.id,`xcDel('${x.id}')`,'Supprimer'))+`</span></li>`;
@@ -2210,7 +2237,7 @@ function cartesHtml(){
   <div class="grid2">
     <section class="panel"><h3>Cartes de l'admin</h3>${L===undefined||L===null&&!X.e?'<div class="empty">Chargement…</div>':pub.length?'<ul class="q">'+pub.map(pubRow).join('')+'</ul>':'<div class="empty">Aucune carte publiée pour ce chapitre.</div>'}</section>
     <section class="panel"><h3>Mes cartes</h3>
-      <div class="row"><input type="text" id="xcn" maxlength="120" placeholder="Titre de la nouvelle carte" aria-label="Titre de la nouvelle carte" onkeydown="if(event.key==='Enter')xcNew()"><button class="btn" onclick="xcNew()">Nouvelle carte</button></div>
+      <div class="row"><input type="text" id="xcn" maxlength="120" placeholder="Titre de la nouvelle carte" aria-label="Titre de la nouvelle carte" onkeydown="if(event.key==='Enter')xcNew()"><select id="xctp" aria-label="Modèle de carte">${xcTplOpts()}</select><button class="btn" onclick="xcNew()">Nouvelle carte</button></div>
       ${L===undefined||L===null&&!X.e?'<div class="empty">Chargement…</div>':mine.length?'<ul class="q">'+mine.map(mineRow).join('')+'</ul>':'<div class="empty">Tu n\'as encore aucune carte dans ce chapitre.</div>'}</section>
   </div>`;
 }
@@ -2221,15 +2248,42 @@ function admCartes(){
     ${S.xcqe?`<p class="bad">${esc(S.xcqe)}</p>`:''}
     ${L===undefined?'<div class="empty">Chargement…</div>':L.length?'<ul class="q">'+L.map(x=>`<li><span><b>${esc(x.titre)}</b> <span class="note" style="margin:0">· ${esc(xcChapName(x.chapitre_id))} · par ${esc(x.auteur||'?')}</span></span><span class="row" style="margin:0"><button class="btn" onclick="xcOpen('${x.id}')">Voir</button><button class="btn" onclick="xcSet('${x.id}','publiee','Carte publiée pour toute la promo.')">Publier</button><button class="btn" onclick="xcSet('${x.id}','privee','Carte renvoyée à son auteur.')">Renvoyer à l\\'auteur</button></span></li>`).join('')+'</ul>':'<div class="empty">Aucune proposition en attente.</div>'}</section>`;
 }
-async function xcNew(){
-  const t=(($('xcn')||{}).value||'').trim()||'Nouvelle carte';
-  const r=await sb.from('cartes').insert({user_id:S.user.id,chapitre_id:CHAP().id,titre:t.slice(0,120)}).select('id');
+const XT={'':'Carte vide',mind:'Carte mentale (thème + branches)',cours:'Fiche de cours (définition, formules, exemple, pièges)',cmp:'Comparaison (A / B)'};
+const xcTplOpts=()=>Object.keys(XT).map(k=>`<option value="${k}">${esc(XT[k])}</option>`).join('');
+function xcTplEls(k){
+  const bx=(id,x,y,w,t,c)=>({type:'rectangle',id,x,y,width:w,height:70,backgroundColor:c||'transparent',fillStyle:'solid',label:{text:t,fontSize:20}});
+  if(k==='mind')return [
+    {type:'ellipse',id:'c',x:330,y:210,width:240,height:110,backgroundColor:'#a5d8ff',fillStyle:'solid',label:{text:'Thème',fontSize:28}},
+    bx('b1',40,40,200,'Idée 1','#b2f2bb'),bx('b2',660,40,200,'Idée 2','#ffec99'),bx('b3',40,400,200,'Idée 3','#ffc9c9'),bx('b4',660,400,200,'Idée 4','#d0bfff'),
+    {type:'arrow',x:360,y:232,width:-115,height:-132},{type:'arrow',x:540,y:232,width:115,height:-132},{type:'arrow',x:360,y:300,width:-115,height:110},{type:'arrow',x:540,y:300,width:115,height:110}];
+  if(k==='cours')return [
+    {type:'text',x:300,y:0,text:'Titre du chapitre',fontSize:32},
+    bx('d',0,70,420,'Définition','#a5d8ff'),bx('f',480,70,420,'Formules clés','#ffec99'),bx('e',0,260,420,'Exemple type','#b2f2bb'),bx('p',480,260,420,'Pièges / erreurs fréquentes','#ffc9c9')];
+  if(k==='cmp')return [
+    {type:'text',x:340,y:0,text:'A  vs  B',fontSize:32},
+    bx('a',0,70,420,'A','#a5d8ff'),bx('b',480,70,420,'B','#ffec99'),bx('a1',0,170,420,'Avantages','#b2f2bb'),bx('b1',480,170,420,'Avantages','#b2f2bb'),bx('a2',0,270,420,'Limites','#ffc9c9'),bx('b2',480,270,420,'Limites','#ffc9c9')];
+  return null;
+}
+async function xcNew(docId){
+  const d=docId&&DB.docs.find(x=>x.id===docId),t=d?'Carte – '+d.titre:((($('xcn')||{}).value||'').trim()||'Nouvelle carte'),tpl=(($(d?'dctp':'xctp')||{}).value)||'';
+  const row={user_id:S.user.id,chapitre_id:d?d.chapitre_id:CHAP().id,titre:t.slice(0,120)};
+  if(d&&!S.xcNoDoc)row.document_id=d.id;
+  const r=await sb.from('cartes').insert(row).select('id');
   if(r.error)return flash(xcErr(r.error),1);
-  await cartesLoad();xcOpen(r.data[0].id);
+  xcRefresh();xcOpen(r.data[0].id,tpl);
 }
 async function xcSet(id,statut,msg){
+  let old=null;
+  if(S.role==='admin'){const g=await sb.from('cartes').select('user_id,titre,statut,chapitre_id').eq('id',id).maybeSingle();old=g.data||null}
   const r=await sb.from('cartes').update({statut}).eq('id',id).select('id');
   if(refused(r))return flash(refused(r),1);
+  if(old&&old.user_id!==S.user.id){
+    const T='« '+old.titre+' »',ch=xcChapName(old.chapitre_id);let n=null;
+    if(statut==='publiee')n=['Ta carte a été publiée','Ta carte '+T+' a été publiée par l\'admin dans le chapitre « '+ch+' ». Elle est maintenant visible par toute la promo, en lecture seule. Merci !'];
+    else if(statut==='privee'&&old.statut==='proposee')n=['Ta carte a été renvoyée','Ta carte '+T+' n\'a pas été publiée pour le moment. Elle est de nouveau dans tes cartes privées du chapitre « '+ch+' » : tu peux la modifier et la proposer à nouveau.'];
+    else if(statut==='privee'&&old.statut==='publiee')n=['Ta carte a été dépubliée','Ta carte '+T+' n\'est plus dans les cartes de l\'admin. Elle est de nouveau dans tes cartes privées du chapitre « '+ch+' ».'];
+    if(n)try{await sb.from('notifs').insert({envoi_id:uid(),user_id:old.user_id,titre:n[0],corps:n[1],envoye_par:S.user.id})}catch(e){}
+  }
   flash(msg);xcRefresh();
 }
 async function xcDel(id){
@@ -2289,7 +2343,7 @@ function xcFile(){
   const j=ExcalidrawLib.serializeAsJSON(XE.api.getSceneElements(),XE.api.getAppState(),XE.api.getFiles(),'local');
   xcDl(new Blob([j],{type:'application/json'}),xcName()+'.excalidraw');
 }
-async function xcOpen(id){
+async function xcOpen(id,tpl){
   if(XE.id)return;
   S.msg='Ouverture de la carte…';S.ko=false;render();
   try{await xcLib()}catch(e){return flash("Impossible de charger l'éditeur de cartes (connexion ?).",1)}
@@ -2312,7 +2366,7 @@ async function xcOpen(id){
   if($('xccp'))$('xccp').onclick=()=>{xcCopy(d.id)};
   XE.root=ReactDOM.createRoot($('xcm'));
   XE.root.render(h(L.Excalidraw,{
-    excalidrawAPI:a=>{XE.api=a},langCode:'fr-FR',theme:'dark',viewModeEnabled:ro,
+    excalidrawAPI:a=>{XE.api=a;const te=tpl&&!init.elements.length?xcTplEls(tpl):null;if(te)setTimeout(()=>{try{const els=L.convertToExcalidrawElements(te);a.updateScene({elements:els});a.scrollToContent(els,{fitToContent:true});xcDirty()}catch(e){}},400)},langCode:'fr-FR',theme:'dark',viewModeEnabled:ro,
     initialData:{elements:init.elements,appState:{...init.appState,viewModeEnabled:ro},files:init.files,scrollToContent:true},
     UIOptions:{canvasActions:{loadScene:false,saveToActiveFile:false,toggleTheme:false}},
     onChange:(els,st,f)=>{
