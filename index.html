@@ -334,7 +334,7 @@ const views={
       :S.lvl===1?'<details><summary>Afficher l\'indice</summary>Indice : à venir</details>'
       :'<p class="note">Aucune aide à ce niveau.</p>';
     return `<div class="row"><button class="btn" onclick="S.ex=null;render()">Retour à la liste</button></div>
-    <h1>Exo ${S.ex} – ${tp}</h1>
+    <h1>${/^Exo \d/.test(tp)?`${tp} (exercice ${S.ex})`:`Exo ${S.ex} – ${tp}`}</h1>
     <div class="row">${LV.map((x,i)=>`<button class="lvl${i===S.lvl?' on':''}" onclick="S.lvl=${i};render()">${x.n}</button>`).join('')}</div>
     <p class="note" style="margin:0 0 12px">${l.t}</p>
     ${gen?genView(l):cg?calcView(gk):sf?sfView(l):`<section class="panel"><h3>Exercice ${S.ex} – ${l.n}</h3>
@@ -815,6 +815,47 @@ const CALC={
    {raw:f,q:`${F(f)}`,hints:["Point critique : résous ∂f/∂x = 0 et ∂f/∂y = 0 (système linéaire).","Notation de Monge : r = ∂²f/∂x², s = ∂²f/∂x∂y, t = ∂²f/∂y². Si rt − s² > 0 : extremum (minimum si r > 0, maximum si r < 0) ; si rt − s² < 0 : point selle."],
     fields:[{id:'x',t:'num',label:'abscisse x₀ =',ans:x0},{id:'y',t:'num',label:'ordonnée y₀ =',ans:y0},{id:'n',t:'choice',label:'nature :',opts:['minimum local','maximum local','point selle'],ans:nat}],
     sol:[`Le point critique est (${x0}, ${y0}).`,`r = ${2*a}, s = ${c}, t = ${2*b}, rt − s² = ${det}.`,`Nature : ${nat}.`]}]}}},
+ bestlim:{n:'Best-of de limites',g(r,ex){
+  const P=[
+   {f:'sin(x)*(exp(y)-1)/(x*y)',l:1,s:[R_`On sépare les variables : \(\displaystyle\lim\frac{\sin x\,(e^y-1)}{xy}=\Big[\lim_{x\to0}\frac{\sin x}{x}\Big]\Big[\lim_{y\to0}\frac{e^y-1}{y}\Big]\).`,R_`Ce sont deux nombres dérivés en \(0\) : \(\sin'(0)=\cos 0=1\) et \(\exp'(0)=1\). La limite vaut \(1\).`]},
+   {f:'(x^8+y^8)/(x^4+y^4)',l:0,s:[R_`La fonction n'est pas définie en \((0,0)\) : pour tester tous les chemins, on passe en polaires. \(f(r\cos\theta,r\sin\theta)=r^4\,\dfrac{\cos^8\theta+\sin^8\theta}{\cos^4\theta+\sin^4\theta}\).`,R_`On remarque \(\cos^8\theta+\sin^8\theta\le\cos^8\theta+2\cos^4\theta\sin^4\theta+\sin^8\theta=(\cos^4\theta+\sin^4\theta)^2\), d'où \(0\le f\le r^4(\cos^4\theta+\sin^4\theta)\le 2r^4\).`,R_`Par encadrement, la limite quand \(r\to0^+\) est nulle indépendamment de \(\theta\) : elle existe et vaut \(0\).`]},
+   {f:'x*y^5/(x^8+y^10)',l:null,s:[R_`On regarde des approches selon des droites. Sur \(y=0\) : la fonction est nulle.`,R_`Sur \(y=x\) : \(x\mapsto\dfrac{x^6}{x^8+x^{10}}\sim\dfrac1{x^2}\) tend vers \(+\infty\) en \(0\) (utilise des équivalents).`,"Deux comportements différents : la limite n'existe pas."]},
+   {f:'(x^3-y^3)/(x^2+y^2)',l:0,s:[R_`En polaires : \(f(r\cos\theta,r\sin\theta)=r\cos^3\theta-r\sin^3\theta\), qui tend vers \(0\) quand \(r\to0^+\) indépendamment de \(\theta\) (\(|f|\le 2r\)). La limite existe et vaut \(0\).`]},
+   {f:'(x^2-y^4)/(x^2+y^4)',l:null,s:[R_`En polaires : \(f=\dfrac{\cos^2\theta-r^2\sin^4\theta}{\cos^2\theta+r^2\sin^4\theta}\).`,R_`Si \(\cos\theta\ne0\), la limite quand \(r\to0^+\) est \(1\). Si \(\cos\theta=0\) (approche selon \(x=0\)), \(\sin\theta=\pm1\) et la limite est \(-1\).`,"Deux valeurs différentes : la limite n'existe pas."]},
+   {f:'(2*x^2+x^2*y-y^2*x+2*y^2)/(x^2+y^2)',l:2,s:[R_`En polaires : \(f(r\cos\theta,r\sin\theta)=2+r\,[\cos^2\theta\sin\theta-\sin^2\theta\cos\theta]\).`,R_`La limite quand \(r\to0^+\) est \(2\) indépendamment de \(\theta\).`]}
+  ];
+  const H=["Essaie des chemins : y = 0, x = 0, y = x (ou y = x², x = y²…). Si deux valeurs diffèrent, la limite n'existe pas.","Si les chemins donnent la même valeur, passe en polaires (x = r·cosθ, y = r·sinθ) et encadre par une fonction de r qui tend vers 0 (ou reconnais un nombre dérivé)."];
+  let L;
+  if(ex===1)L=P;
+  else{const pool=P.concat(LT.map(g=>{const d=g(r);return{f:d.f,l:d.l,s:[(d.l===null?"La limite n'existe pas.":'Limite = '+d.l),d.s]}}));L=pickN(r,pool.length,6).map(i=>pool[i])}
+  return{titre:'Best-of de limites',consigne:"Déterminer les limites suivantes. §Écris un nombre, ou « n'existe pas » s'il n'y a pas de limite.",
+   items:L.map(d=>({q:LM(d.f),hints:H,fields:[{id:'l',t:'lim',label:'limite =',ans:d.l}],sol:d.l===null?["La limite n'existe pas.",...d.s]:['Limite = '+d.l,...d.s]}))}}},
+ normcalc:{n:'Calculs avec les normes',g(r,ex){
+  const k3=['₁','₂','∞'],nn=(u,k)=>nrm(u,k===0?1:k===1?2:3),ex2=v=>{const s=v[0]*v[0]+v[1]*v[1],q=Math.round(Math.sqrt(s));return q*q===s?String(q):'√'+s};
+  const sum=(a,b)=>[a[0]+b[0],a[1]+b[1]],rv=()=>{let u;do{u=[ri(r,-5,5),ri(r,-5,5)]}while(!u[0]&&!u[1]);return u};
+  const HN=["‖x‖₁ = |x₁| + |x₂| ; ‖x‖₂ = √(x₁² + x₂²) ; ‖x‖∞ = max(|x₁|, |x₂|)."];
+  const vecItem=(nm,u)=>({q:`${nm} = (${u[0]}, ${u[1]})`,hints:HN,
+    fields:[0,1,2].map(k=>({id:'n'+k,t:'num',label:`‖${nm}‖${k3[k]} =`,ans:nn(u,k)})),
+    sol:[`‖${nm}‖₁ = |${u[0]}| + |${u[1]}| = ${nn(u,0)}`,`‖${nm}‖₂ = √(${u[0]*u[0]} + ${u[1]*u[1]}) = ${ex2(u)}`,`‖${nm}‖∞ = max(${Math.abs(u[0])}, ${Math.abs(u[1])}) = ${nn(u,2)}`]});
+  const triItem=(a,b,ks)=>{const s=sum(a,b);return{q:`u = (${a[0]}, ${a[1]}) et v = (${b[0]}, ${b[1]}). Compare ‖u + v‖ et ‖u‖ + ‖v‖ pour les trois normes.`,
+    hints:["Calcule u + v, puis les normes. L'inégalité triangulaire dit ‖u + v‖ ≤ ‖u‖ + ‖v‖ : c'est une égalité quand les deux membres sont égaux."],
+    fields:ks.flatMap(k=>[{id:'s'+k,t:'num',label:`‖u + v‖${k3[k]} =`,ans:nn(s,k)},{id:'t'+k,t:'num',label:`‖u‖${k3[k]} + ‖v‖${k3[k]} =`,ans:nn(a,k)+nn(b,k)},
+      {id:'e'+k,t:'choice',label:`norme ${['un','deux','infini'][k]} :`,opts:['égalité','inégalité stricte'],ans:Math.abs(nn(s,k)-nn(a,k)-nn(b,k))<1e-9?'égalité':'inégalité stricte'}]),
+    sol:ks.map(k=>`Norme ${k3[k]} : ‖u + v‖ = ${k===1?ex2(s):nn(s,k)} ${Math.abs(nn(s,k)-nn(a,k)-nn(b,k))<1e-9?'=':'<'} ${k===1?(nn(a,k)+nn(b,k)).toFixed(3).replace(/\.?0+$/,'').replace('.',','):nn(a,k)+nn(b,k)} = ‖u‖ + ‖v‖`)}};
+  if(ex===1){
+   return{titre:'Calculs avec les normes',consigne:"Autour de l'inégalité triangulaire. §Les réponses exactes peuvent s'écrire avec sqrt (ex : sqrt(13)).",items:[
+    {q:"Démontrer que la valeur absolue vérifie l'inégalité triangulaire (à rédiger sur papier).",hints:["Élève au carré : (a + b)² = a² + 2ab + b², puis compare avec (|a| + |b|)²."],fields:[],
+     sol:[R_`\((a+b)^2=|a|^2+2ab+|b|^2\le|a|^2+|2ab|+|b|^2\) car \(2ab\le|2ab|\).`,R_`Avec \(|2ab|=2|a||b|\) : \((a+b)^2\le(|a|+|b|)^2\). On prend la racine carrée : \(|a+b|\le|a|+|b|\).`]},
+    {q:"Montrer que ‖(x₁, x₂)‖₁ = |x₁| + |x₂| est une norme sur ℝ² (à rédiger sur papier).",hints:["Quatre points : positivité, séparation, homogénéité, inégalité triangulaire."],fields:[],
+     sol:["Positivité : somme de réels positifs.",R_`Séparation : \(\|x\|_1=0\iff|x_1|=-|x_2|\iff x_1=x_2=0\).`,R_`Homogénéité : \(\|kx\|_1=|kx_1|+|kx_2|=|k|\,\|x\|_1\).`,R_`Inégalité triangulaire : \(|x_1+y_1|+|x_2+y_2|\le|x_1|+|y_1|+|x_2|+|y_2|=\|x\|_1+\|y\|_1\) (inégalité triangulaire de la valeur absolue).`]},
+    {q:"u₁ = (1, 0) et u₂ = (0, 1). Calcule les normes de u₁ + u₂, puis dis si l'inégalité triangulaire ‖u₁ + u₂‖ ≤ ‖u₁‖ + ‖u₂‖ est une égalité.",
+     hints:["u₁ + u₂ = (1, 1). Les trois normes de u₁ et de u₂ valent 1."],
+     fields:[0,1,2].flatMap(k=>[{id:'s'+k,t:'num',label:`‖u₁ + u₂‖${k3[k]} =`,ans:nn([1,1],k)},{id:'e'+k,t:'choice',label:`norme ${['un','deux','infini'][k]} :`,opts:['égalité','inégalité stricte'],ans:k===0?'égalité':'inégalité stricte'}]),
+     sol:["u₁ + u₂ = (1, 1) et ‖u₁‖ = ‖u₂‖ = 1 pour les trois normes, donc ‖u₁‖ + ‖u₂‖ = 2.","Norme un : ‖u₁ + u₂‖₁ = 2 : cas d'égalité.","Norme deux : ‖u₁ + u₂‖₂ = √2 < 2 : inégalité stricte (le segment est le chemin le plus court ; la norme un « interdit les diagonales »).","Norme infini : ‖u₁ + u₂‖∞ = 1 < 2 : inégalité stricte."]}]};
+  }
+  const u=rv(),v=rv(),a=rv(),b=rv(),ks=[0,1,2].sort(()=>r()-.5);
+  return{titre:'Calculs avec les normes',consigne:"§Les réponses exactes peuvent s'écrire avec sqrt (ex : sqrt(13)).",items:[vecItem('u',u),vecItem('v',v),triItem(a,b,[0,1,2])]};
+ }},
  normes:{n:'Normes, distances et boules',g(r){
   let u;do{u=[ri(r,-5,5),ri(r,-5,5)]}while(!u[0]&&!u[1]);
   const m=[1,2,3,-1,-2][ri(r,0,4)],p=[0,0,1,-1][ri(r,0,3)],x0=ri(r,-3,3),y0=ri(r,-3,3),dist=Math.abs(m*x0-y0+p)/Math.sqrt(1+m*m),
@@ -855,7 +896,7 @@ const CALC={
 };
 const CALC_KEYS=Object.keys(CALC);
 const hsh=s=>[...s].reduce((a,c)=>(a*31+c.charCodeAt(0))|0,7);
-const calcBuild=(kind,ex,vr)=>CALC[kind].g(rng(ex*7919+vr*104729+hsh(kind)));
+const calcBuild=(kind,ex,vr)=>CALC[kind].g(rng(ex*7919+vr*104729+hsh(kind)),ex,vr);
 
 /* ===== Chapitre 2 : intégrales multiples ===== */
 const GL=(()=>{const n=8,x=[],w=[];
@@ -983,7 +1024,7 @@ function cxItemHtml(it,i,pre,st,o){
     :o.lvl===1?`<details><summary>Afficher l'indice</summary>${esc(mx(it.hints[0]))}</details>`:'';
   return `<div class="cxi"><p class="mq">${mx(it.q)}</p>
    ${it.fields.map((f,j)=>cxFieldHtml(f,ids[j],st,shown)).join('')}
-   ${o.train?`<div class="row" style="margin:6px 0 0"><button class="btn" onclick="cxCheck('${st.w}','${pre}',${i})">Vérifier</button></div>`:''}
+   ${o.train&&it.fields.length?`<div class="row" style="margin:6px 0 0"><button class="btn" onclick="cxCheck('${st.w}','${pre}',${i})">Vérifier</button></div>`:''}
    ${o.noHints?'':hints}
    ${o.sol?`<details><summary>Voir la correction</summary>${it.sol.map(s=>`<p style="margin:4px 0">${mx(s)}</p>`).join('')}</details>`:''}</div>`;
 }
