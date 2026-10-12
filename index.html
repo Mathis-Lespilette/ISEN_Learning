@@ -122,6 +122,9 @@ ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;b
 .xcbar input{flex:1;min-width:160px;max-width:380px}
 #xcm{flex:1;min-height:0;position:relative}
 #xcm .excalidraw{height:100%}
+#view .sfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-bottom:14px}
+.sfc{margin:0;text-align:center}.sfc canvas{background:#fff;max-width:none;margin:0;border:0;display:block;cursor:grab;width:100%}.sfc figcaption{font-size:12px;color:var(--mut);margin-top:4px}
+.sfl{line-height:2}.sft{border-collapse:collapse;margin-top:6px}.sft td,.sft th{padding:4px 12px 4px 0;text-align:left;font-weight:normal}.sfx{margin-top:12px;border:1px dashed var(--line);padding:8px 14px;line-height:1.6}
 #xcm canvas{max-width:none;margin:0;border:0;background:transparent}
 .btn.danger.go{background:#5c1a14;color:#fff}
 .pv{width:100%;height:520px;border:1px solid var(--line);background:#fff;display:block}
@@ -325,7 +328,7 @@ const views={
         <ul class="q">${ids.map(i=>{const r=R[i]||{};return `<li><button class="lnk" onclick="S.ex=${i};render()">Exercice ${i}</button>
           <span class="badge ${r.s||'nd'}">${ST[r.s||'']}${r.s?' – '+LV[r.l].n:''}</span></li>`}).join('')}</ul></section>`;
     }
-    const l=LV[S.lvl],r=R[S.ex]||{},gk=CHAP().ty[S.topic].generateur,gen=gk==='domaines-plan',cg=!!CALC[gk];
+    const l=LV[S.lvl],r=R[S.ex]||{},gk=CHAP().ty[S.topic].generateur,gen=gk==='domaines-plan',cg=!!CALC[gk],sf=gk==='surfaces';
     if(gen)ensureGen();
     const aide=S.lvl===0?'<ul><li>Indication 1 : à venir</li><li>Indication 2 : à venir</li><li>Indication 3 : à venir</li></ul>'
       :S.lvl===1?'<details><summary>Afficher l\'indice</summary>Indice : à venir</details>'
@@ -334,7 +337,7 @@ const views={
     <h1>Exo ${S.ex} – ${tp}</h1>
     <div class="row">${LV.map((x,i)=>`<button class="lvl${i===S.lvl?' on':''}" onclick="S.lvl=${i};render()">${x.n}</button>`).join('')}</div>
     <p class="note" style="margin:0 0 12px">${l.t}</p>
-    ${gen?genView(l):cg?calcView(gk):`<section class="panel"><h3>Exercice ${S.ex} – ${l.n}</h3>
+    ${gen?genView(l):cg?calcView(gk):sf?sfView(l):`<section class="panel"><h3>Exercice ${S.ex} – ${l.n}</h3>
       <p>Énoncé à venir : cet exercice « ${tp} » n'est pas encore rédigé.</p>${aide}
       <details><summary>Voir la correction</summary>Correction à venir.</details></section>`}
     <div class="row" style="margin-top:12px"><span>Mon résultat :</span>
@@ -993,6 +996,143 @@ function ensureCx(kind){
   const k=kind+':'+S.ex+':'+S.var;
   if(!S.cx||S.cx.k!==k)S.cx={w:'cx',k,E:calcBuild(kind,S.ex,S.var),ans:{},res:{},shown:{}};
 }
+/* ===== Exo « représentation de fonctions de ℝ² dans ℝ » : associer fonction, surface 3D et courbes de niveau ===== */
+const R_=String.raw;
+const SFP=[
+ {tex:R_`\sin(x)+\sin(y)`,f:(x,y)=>Math.sin(x)+Math.sin(y),h:4,st:.4,hint:R_`Un sinus en $x$, un sinus en $y$ : cherche des vagues dans les deux directions.`,ex:R_`À $x$ fixé on a un sinus, à $y$ fixé aussi : la surface forme des vagues. Les contours sont périodiques : creux en pointillés, bosses en trait plein.`},
+ {tex:R_`x^2-y^2`,f:(x,y)=>x*x-y*y,h:4,st:3,hint:R_`Regarde le niveau $k=0$ : $y^2=x^2$.`,ex:R_`Paraboloïde hyperbolique (une selle). Contours : hyperboles d'asymptotes $y=\pm x$ ; le niveau $k=0$ donne $y=\pm x$.`},
+ {tex:R_`\sin\left(\sqrt{x^2+y^2}\right)`,f:(x,y)=>Math.sin(Math.hypot(x,y)),h:4,st:.2,hint:R_`La fonction ne dépend que de $\sqrt{x^2+y^2}$ : pense à des ondes circulaires.`,ex:R_`La coupe $x=0$ donne $y\mapsto\sin|y|$ : un sinus pair avec une brisure en $0$. On obtient des ondes concentriques, comme un caillou jeté dans l'eau.`},
+ {tex:R_`y^4-8y^2-4x^2`,f:(x,y)=>y**4-8*y*y-4*x*x,h:2.5,st:4,hint:R_`Étudie les fonctions partielles : en $x$ puis en $y$.`,ex:R_`En $x$ : $-4x^2$ (parabole tournée vers le bas). En $y$ : $y^4-8y^2$ a deux creux en $y=\pm2$ et une bosse en $0$. D'où deux creux et des cols.`},
+ {tex:R_`x^2+y^2`,f:(x,y)=>x*x+y*y,h:4,st:3,hint:R_`Les lignes de niveau $x^2+y^2=k$ sont des cercles.`,ex:R_`Paraboloïde de révolution : les lignes de niveau $x^2+y^2=k$ sont des cercles de rayon $\sqrt k$ (de plus en plus serrés).`},
+ {tex:R_`e^{-x^2}+e^{-4y^2}`,f:(x,y)=>Math.exp(-x*x)+Math.exp(-4*y*y),h:2.5,st:.2,hint:R_`La coupe $y=0$ donne une cloche.`,ex:R_`La coupe $y=0$ donne $x\mapsto e^{-x^2}+\text{cste}$ : une cloche. La structure en croix ($+$) est bien visible sur les courbes de niveau.`},
+ {tex:R_`\sin(x)\sin(y)`,f:(x,y)=>Math.sin(x)*Math.sin(y),h:4,st:.2,hint:R_`Le niveau $0$ est formé de $x=k\pi$ ou $y=k\pi$.`,ex:R_`Bosses et creux alternés en damier. Le niveau $k=0$ est le quadrillage $x=k\pi$, $y=k\pi$ ; autour des extrema, les contours sont des courbes fermées.`},
+ {tex:R_`e^{-x^2-y^2}`,f:(x,y)=>Math.exp(-x*x-y*y),h:2.5,st:.1,hint:R_`Valeur maximale en $(0,0)$, qui tend vers $0$ à l'infini.`,ex:R_`Une cloche de révolution : maximum $1$ en $(0,0)$, contours circulaires serrés près de la base de la cloche.`},
+ {tex:R_`xy`,f:(x,y)=>x*y,h:3,st:2,hint:R_`Que vaut $f$ sur les axes $x=0$ et $y=0$ ?`,ex:R_`Une selle tournée de $45^\circ$ par rapport à $x^2-y^2$ : le niveau $0$ est formé des deux axes, les autres niveaux sont des hyperboles $xy=k$.`},
+ {tex:R_`x^2`,f:(x,y)=>x*x,h:3,st:1,hint:R_`Que se passe-t-il quand $y$ varie, $x$ restant fixé ?`,ex:R_`La fonction ne dépend pas de $y$ : cylindre parabolique, dont les lignes de niveau sont des droites verticales $x=\pm\sqrt k$.`},
+ {tex:R_`x^3-3xy^2`,f:(x,y)=>x**3-3*x*y*y,h:2,st:2,hint:R_`Cherche trois « vallées » et trois « collines » autour de l'origine.`,ex:R_`Selle à singe : trois collines et trois vallées autour de l'origine ; le niveau $0$ est formé de trois droites passant par l'origine.`},
+ {tex:R_`|x|+|y|`,f:(x,y)=>Math.abs(x)+Math.abs(y),h:3,st:.5,hint:R_`Les lignes de niveau $|x|+|y|=k$ ont des angles.`,ex:R_`Pyramide renversée avec arêtes en $x=0$ et $y=0$ : les lignes de niveau $|x|+|y|=k$ sont des losanges.`}
+];
+const SFS='ABCDEF',SFC=['i','ii','iii','iv','v','vi'];
+function sfBuild(ex,vr){
+  if(ex===1)return{fn:SFP.slice(0,6),so:[0,4,5,2,3,1],co:[4,2,3,5,1,0]};
+  const r=rng(ex*7919+vr*104729+4242),ids=pickN(r,SFP.length,6),sh=()=>{const a=[0,1,2,3,4,5];for(let i=5;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+  return{fn:ids.map(i=>SFP[i]),so:sh(),co:sh()};
+}
+function ensureSf(){
+  const k=S.ex+':'+S.var;
+  if(!S.sf||S.sf.k!==k)S.sf={k,E:sfBuild(S.ex,S.var),ans:{},chk:false,show:false,v:{}};
+  return S.sf;
+}
+function sfGrid(sp,N){
+  const h=sp.h,g=[];let lo=1/0,hi=-1/0;
+  for(let i=0;i<=N;i++){g[i]=[];for(let j=0;j<=N;j++){const z=sp.f(-h+2*h*i/N,-h+2*h*j/N);g[i][j]=z;if(z<lo)lo=z;if(z>hi)hi=z}}
+  return{g,lo,hi,N};
+}
+const sfRb=t=>{t=Math.max(0,Math.min(1,t));const r=Math.min(1,Math.abs(2*t-.5)),g=Math.sin(Math.PI*t),b=Math.cos(Math.PI*t/2);return'rgb('+Math.round(r*255)+','+Math.round(g*255)+','+Math.round(b*255)+')'};
+const sfTicks=h=>h>=3?[-2.5,0,2.5]:[-2,0,2];
+function sfSurf(cv,sp,az,el){
+  const W=cv.width,H=cv.height,c=cv.getContext('2d'),G=sp.G||(sp.G=sfGrid(sp,44)),N=G.N,h=sp.h;
+  c.fillStyle='#fff';c.fillRect(0,0,W,H);
+  const a=az*Math.PI/180,e=el*Math.PI/180,ca=Math.cos(a),sa=Math.sin(a),ce=Math.cos(e),se=Math.sin(e),
+    cm=[ce*ca,ce*sa,se],rr=[-sa,ca],uu=[-se*ca,-se*sa,ce],zc=(G.hi+G.lo)/2,zr=(G.hi-G.lo)/2||1,
+    S0=Math.min(W,H)*.27,ox=W*.46,oy=H*.5,ZH=.75;
+  const P=(X,Y,Z)=>[ox+S0*(X*rr[0]+Y*rr[1]),oy-S0*(X*uu[0]+Y*uu[1]+Z*uu[2]),X*cm[0]+Y*cm[1]+Z*cm[2]];
+  const xb=cm[0]>0?-1:1,yb=cm[1]>0?-1:1,zb=cm[2]>0?-ZH:ZH,tk=sfTicks(h).map(t=>t/h);
+  const poly=(pts,fill,st,lw)=>{c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();if(fill){c.fillStyle=fill;c.fill()}if(st){c.strokeStyle=st;c.lineWidth=lw||1;c.stroke()}};
+  const line=(p,q,st,lw)=>{c.beginPath();c.moveTo(p[0],p[1]);c.lineTo(q[0],q[1]);c.strokeStyle=st;c.lineWidth=lw;c.stroke()};
+  poly([P(xb,-1,-ZH),P(xb,1,-ZH),P(xb,1,ZH),P(xb,-1,ZH)].map(p=>p),'#ececf1','#c9c9d1',1);
+  poly([P(-1,yb,-ZH),P(1,yb,-ZH),P(1,yb,ZH),P(-1,yb,ZH)],'#ececf1','#c9c9d1',1);
+  poly([P(-1,-1,zb),P(1,-1,zb),P(1,1,zb),P(-1,1,zb)],'#ececf1','#c9c9d1',1);
+  tk.forEach(t=>{line(P(xb,t,-ZH),P(xb,t,ZH),'#fff',1.4);line(P(xb,-1,t*ZH),P(xb,1,t*ZH),'#fff',1);line(P(t,yb,-ZH),P(t,yb,ZH),'#fff',1.4);line(P(-1,yb,t*ZH),P(1,yb,t*ZH),'#fff',1);line(P(t,-1,zb),P(t,1,zb),'#fff',1.4);line(P(-1,t,zb),P(1,t,zb),'#fff',1.4)});
+  const Q=[];
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+    const zs=[G.g[i][j],G.g[i+1][j],G.g[i+1][j+1],G.g[i][j+1]],pt=[[i,j],[i+1,j],[i+1,j+1],[i,j+1]].map(([p,q],k)=>P(-1+2*p/N,-1+2*q/N,(zs[k]-zc)/zr*ZH));
+    Q.push({pt,d:(pt[0][2]+pt[1][2]+pt[2][2]+pt[3][2])/4,t:((zs[0]+zs[1]+zs[2]+zs[3])/4-G.lo)/((G.hi-G.lo)||1)});
+  }
+  Q.sort((p,q)=>p.d-q.d);
+  Q.forEach(q=>{const col=sfRb(q.t);poly(q.pt,col,col,.7)});
+  c.fillStyle='#222';c.font='12px sans-serif';c.textAlign='center';c.textBaseline='middle';
+  const xe=rr[0]>0?1:-1,yf=-yb;
+  tk.forEach((t,i)=>{
+    const v=String(sfTicks(h)[i]).replace('-','−'),px=P(t,yf,zb),py=P(xe,t,zb);
+    c.fillText(v+(v==='0'?'.0':v.includes('.')?'':'.0'),px[0],px[1]+13);c.textAlign='left';c.fillText(v+(v==='0'?'.0':v.includes('.')?'':'.0'),py[0]+8,py[1]+5);c.textAlign='center'});
+  if(G.lo<0&&G.hi>0){const pz=P(xe,yb,-zc/zr*ZH);c.textAlign='left';c.fillText('0',pz[0]+8,pz[1])}
+  c.font='italic 13px serif';const lx=P(0,yf,zb),ly=P(xe,0,zb);c.textAlign='center';c.fillText('x',lx[0],lx[1]+30);c.textAlign='left';c.fillText('y',ly[0]+30,ly[1]+14);
+}
+function sfLevels(sp,K){
+  let st=sp.st,L;
+  for(;;){L=[];for(let v=Math.ceil(K.lo/st-1e-9)*st;v<=K.hi+1e-9;v+=st)L.push(Math.round(v/st)*st);if(L.length<=14)return L;st*=2}
+}
+function sfCont(cv,sp){
+  const W=cv.width,H=cv.height,c=cv.getContext('2d'),K=sp.K||(sp.K=sfGrid(sp,90)),N=K.N,h=sp.h,L=sfLevels(sp,K),m={l:44,r:12,t:12,b:34},pw=W-m.l-m.r,ph=H-m.t-m.b,
+    px=x=>m.l+(x+h)/(2*h)*pw,py=y=>m.t+(1-(y+h)/(2*h))*ph,gx=i=>-h+2*h*i/N;
+  c.fillStyle='#fff';c.fillRect(0,0,W,H);
+  c.save();c.beginPath();c.rect(m.l,m.t,pw,ph);c.clip();
+  const labs=[];
+  L.forEach((lv,li)=>{
+    const segs=[];
+    for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+      const v=[K.g[i][j],K.g[i+1][j],K.g[i+1][j+1],K.g[i][j+1]].map(z=>z-lv),pts=[];
+      const ed=(a,b,xa,ya,xb,yb)=>{if((v[a]>=0)!==(v[b]>=0)){const t=v[a]/(v[a]-v[b]);pts.push([xa+(xb-xa)*t,ya+(yb-ya)*t])}};
+      ed(0,1,gx(i),gx(j),gx(i+1),gx(j));ed(1,2,gx(i+1),gx(j),gx(i+1),gx(j+1));ed(3,2,gx(i),gx(j+1),gx(i+1),gx(j+1));ed(0,3,gx(i),gx(j),gx(i),gx(j+1));
+      if(pts.length===2)segs.push(pts);else if(pts.length===4){segs.push([pts[0],pts[3]]);segs.push([pts[1],pts[2]])}
+    }
+    c.beginPath();segs.forEach(s=>{c.moveTo(px(s[0][0]),py(s[0][1]));c.lineTo(px(s[1][0]),py(s[1][1]))});
+    c.strokeStyle='#111';c.lineWidth=1.2;c.setLineDash(lv<-1e-9?[4,3]:[]);c.stroke();
+    if(segs.length){const th=li*2.4,tx=h*.55*Math.cos(th),ty=h*.55*Math.sin(th);let best=null,bd=1/0;
+      segs.forEach(s=>{const mx_=(s[0][0]+s[1][0])/2,my_=(s[0][1]+s[1][1])/2,d=(mx_-tx)**2+(my_-ty)**2;if(d<bd){bd=d;best=[mx_,my_]}});
+      labs.push([lv,best])}
+  });
+  c.setLineDash([]);c.font='10px sans-serif';c.textAlign='center';c.textBaseline='middle';
+  labs.forEach(([lv,p])=>{const t=String(Math.round(lv*100)/100).replace('-','−'),w=c.measureText(t).width+3;c.fillStyle='#fff';c.fillRect(px(p[0])-w/2,py(p[1])-6,w,12);c.fillStyle='#111';c.fillText(t,px(p[0]),py(p[1]))});
+  c.restore();
+  c.strokeStyle='#111';c.lineWidth=1;c.strokeRect(m.l,m.t,pw,ph);c.fillStyle='#111';c.font='12px sans-serif';
+  sfTicks(h).forEach(t=>{const lb=String(t).replace('-','−');c.textAlign='center';c.fillText(lb,px(t),m.t+ph+14);c.textAlign='right';c.fillText(lb,m.l-6,py(t))});
+  c.textAlign='center';c.font='italic 13px serif';c.fillText('x',m.l+pw/2,H-8);c.fillText('y',12,m.t+ph/2);
+}
+const sfRes=(E,k)=>{const a=(S.sf.ans[k]||{});return{s:a.s===String(E.so.indexOf(k)),c:a.c===String(E.co.indexOf(k))}};
+function sfAns(k,t,v){const A=S.sf.ans;A[k]=A[k]||{};A[k][t]=v;S.sf.chk=false;const e=$('sfr'+k);if(e)e.innerHTML=''}
+function sfCheck(){S.sf.chk=true;render()}
+function sfView(l){
+  const st=ensureSf(),E=st.E,ok=st.chk&&E.fn.every((_,k)=>{const r=sfRes(E,k);return r.s&&r.c});
+  const opt=(arr,sel)=>'<option value="">—</option>'+arr.map((x,i)=>`<option value="${i}"${sel===String(i)?' selected':''}>${x}</option>`).join('');
+  const hint=k=>S.lvl===0?` <span class="note" style="margin:0">— ${E.fn[k].hint}</span>`:S.lvl===1?`<details style="display:inline-block;margin-left:6px"><summary>Indice</summary>${E.fn[k].hint}</details>`:'';
+  return `<section class="panel"><h3>Représentation de fonctions de ℝ² dans ℝ</h3>
+    <p>Associer chacune des fonctions ci-dessous avec la surface représentative (figure 1) et les courbes de niveau (figure 2) qui conviennent.</p>
+    <ol class="sfl">${E.fn.map((f,k)=>`<li>$f_{${k+1}}:(x,y)\\mapsto ${f.tex}$${hint(k)}</li>`).join('')}</ol>
+    <h4>Figure 1 – Surfaces représentatives de fonctions ℝ² → ℝ</h4>
+    <p class="note" style="margin:0 0 8px">Clique et glisse sur une surface pour la faire tourner.</p>
+    <div class="sfg">${E.so.map((_,j)=>`<figure class="sfc"><canvas class="sfs" data-i="${j}" width="380" height="380" role="img" aria-label="Surface ${SFS[j]}"></canvas><figcaption>(${SFS[j].toLowerCase()}) Surface ${SFS[j]}</figcaption></figure>`).join('')}</div>
+    <h4>Figure 2 – Contours de fonctions ℝ² → ℝ</h4>
+    <p class="note" style="margin:0 0 8px">Les chiffres indiqués correspondent au niveau $k$ du contour. Les niveaux négatifs sont en pointillés.</p>
+    <div class="sfg">${E.co.map((_,j)=>`<figure class="sfc"><canvas class="sfk" data-i="${j}" width="380" height="380" role="img" aria-label="Contours ${SFC[j]}"></canvas><figcaption>(${SFC[j]}) Contours ${SFC[j]}</figcaption></figure>`).join('')}</div>
+    <h4>Tes associations</h4>
+    <table class="sft"><tr><th></th><th>Surface</th><th>Contours</th><th></th></tr>
+    ${E.fn.map((_,k)=>{const a=st.ans[k]||{},r=st.chk?sfRes(E,k):null;
+      return `<tr><td>$f_{${k+1}}$</td><td><select aria-label="Surface de f${k+1}" onchange="sfAns(${k},'s',this.value)">${opt([...SFS],a.s)}</select></td>
+      <td><select aria-label="Contours de f${k+1}" onchange="sfAns(${k},'c',this.value)">${opt(SFC,a.c)}</select></td>
+      <td id="sfr${k}">${r?(r.s?'<span class="good">surface ✓</span>':'<span class="bad">surface ✗</span>')+' · '+(r.c?'<span class="good">contours ✓</span>':'<span class="bad">contours ✗</span>'):''}</td></tr>`}).join('')}</table>
+    ${ok?'<p class="good" style="margin-top:12px">Tout est juste : tu peux marquer l\'exercice comme réussi.</p>':''}
+    <div class="row" style="margin-top:12px"><button class="btn" onclick="sfCheck()">Vérifier</button>
+      <button class="btn" onclick="S.sf.show=!S.sf.show;render()">${st.show?'Masquer la correction':'Voir la correction'}</button>
+      ${S.ex>1?'<button class="btn" onclick="S.var++;S.sf=null;render()">Nouveau tirage</button>':''}</div>
+    ${st.show?`<div class="sfx"><ul>${E.fn.map((f,k)=>`<li>$f_{${k+1}}$ → surface <b>${SFS[E.so.indexOf(k)]}</b> / contours <b>${SFC[E.co.indexOf(k)]}</b>. ${f.ex}</li>`).join('')}</ul></div>`:''}
+  </section>`;
+}
+function sfBind(){
+  if(S.v!=='exos'||!S.sf)return;
+  const st=S.sf,E=st.E;
+  document.querySelectorAll('canvas.sfk').forEach(cv=>sfCont(cv,E.fn[E.co[+cv.dataset.i]]));
+  document.querySelectorAll('canvas.sfs').forEach(cv=>{
+    const j=+cv.dataset.i,sp=E.fn[E.so[j]],V=st.v[j]=st.v[j]||{az:-60,el:30};
+    sfSurf(cv,sp,V.az,V.el);
+    let dn=null;
+    cv.onpointerdown=ev=>{dn=[ev.clientX,ev.clientY];try{cv.setPointerCapture(ev.pointerId)}catch(e){}};
+    cv.onpointermove=ev=>{if(!dn)return;V.az+=(ev.clientX-dn[0])*.6;V.el=Math.max(4,Math.min(88,V.el+(ev.clientY-dn[1])*.4));dn=[ev.clientX,ev.clientY];sfSurf(cv,sp,V.az,V.el)};
+    cv.onpointerup=cv.onpointercancel=()=>{dn=null};
+  });
+}
+
 function calcView(kind,quiet){
   ensureCx(kind);const st=S.cx,E=st.E,all=E.items.every((it,i)=>it.fields.every(f=>(st.res[i+'_'+f.id]||st.res['' +i+'_'+f.id]||{}).ok));
   const items=E.items.map((it,i)=>{const o={train:1,lvl:S.lvl,sol:1,show:(st.shown||{})[''+i]};return cxItemHtml(it,i,'',st,o)}).join('');
@@ -1514,7 +1654,7 @@ function render(){
   else if(S.err)html=`<section class="panel"><p class="bad">Impossible de charger les données : ${esc(S.err)}</p><div class="row"><button class="btn" onclick="enter(S.user)">Réessayer</button></div></section>`;
   else html=views[S.v]();
   $('view').innerHTML=(vmOn()?`<p class="note" role="status" style="margin:0 0 12px;border:1px dashed var(--line);padding:8px 12px">Vue membre : tu vois le site comme un membre (affichage seulement, tes droits restent ceux d'admin). <button class="btn" onclick="toggleVM()">Revenir en admin</button></p>`:'')+(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html+gModal();
-  bindNotes();bindGen();ptBind();dvBind();dcBind();mathRender();
+  bindNotes();bindGen();ptBind();dvBind();dcBind();sfBind();mathRender();
 }
 /* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
 const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y4tkgIlrNoHjjsRSw_DjjA_NrBmdQfr';
