@@ -189,6 +189,16 @@ const LV=[
   {n:'Examen',t:'Aucune aide.'}
 ];
 const S={open:{},y:null,user:null,role:'',pseudo:'',edit:false,loading:false,err:'',msg:'',ko:false,mode:'in',f:null,v:'home',d:'maths',lvl:0,ex:null,cf:false,var:0,gen:null,tab:0,topic:null,ch:null,big:false,N:null,pending:[],admin:false,photos:[],NR:{},RES:{},nst:'',nko:false,docId:null,pvId:null,pu:null,pe:'',corId:null,yr:'',busy:false,adm:{},cfd:null,cfp:null,G:{},gs:1,gm:null,prof:{},cl:{tab:'exos',promo:null,a:2,s:1,data:null,loading:false,err:''},admU:null,admUe:'',pa:{},paE:'',at:'depots',ann:null,cn:null,admP:[],acc:null,admA:null};
+/* Le rôle n'est plus modifiable depuis la console (S.role='admin' est ignoré) ; il est confirmé par la base */
+const setRole=(()=>{let r='';Object.defineProperty(S,'role',{get:()=>r,set:()=>{},enumerable:true,configurable:false});return v=>{r=v}})();
+async function verifAdmin(){
+  if(!sb||!S.user||S.role!=='admin')return;
+  try{const r=await sb.rpc('is_admin');
+    if(!r.error&&r.data===false){setRole('membre');S.edit=false;if(S.v==='admin')S.v='home';render()}}catch(e){}
+}
+function toggleEdit(){S.edit=!S.edit;render();verifAdmin()}
+setInterval(verifAdmin,60000);
+
 const ST={'':'Pas encore fait',ok:'Réussi',ko:'Raté'};
 const CHAPS={maths:[],physique:[],prog:[],hum:[]};
 const YN={1:'1ère année',2:'2ème année',3:'3ème année',4:'4ème année',5:'5ème année'};
@@ -204,7 +214,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;render();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='depot'&&sb&&S.user)loadQuota();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){admLoadU()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;render();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='depot'&&sb&&S.user)loadQuota();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){verifAdmin();admLoadU()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -1485,7 +1495,7 @@ function render(){
     +(S.y===null?[]:Object.keys(D)).map(k=>`<button class="dn d-${k}${inD&&S.d===k?' on':''}" onclick="go('dom','${k}')">${D[k]}</button>`).join('')
     +['classement','depot','compte','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}${k==='compte'&&nfU()?` <span class="badge">${nfU()}</span>`:''}</button>`).join(''):'';
   $('who').innerHTML=S.user?`<div>${esc(S.pseudo)} (${S.role==='admin'?'admin':'membre'})</div><div>${S.prof&&S.prof.promo?'Promo '+esc(S.prof.promo)+(S.prof.verif?' ✓':' (à vérifier)'):'<a href="#" onclick="go(\'compte\');return false" style="color:inherit">Promo non renseignée</a>'}</div>`
-    +(S.role==='admin'?`<button class="btn" aria-pressed="${S.edit}" onclick="S.edit=!S.edit;render()">Mode édition : ${S.edit?'oui':'non'}</button>`:'')
+    +(S.role==='admin'?`<button class="btn" aria-pressed="${S.edit}" onclick="toggleEdit()">Mode édition : ${S.edit?'oui':'non'}</button>`:'')
     +`<button class="btn" onclick="logout()">Se déconnecter</button>`:'';
   let html;
   if(!S.user)html=views.login();
@@ -1535,9 +1545,9 @@ async function enter(user){
     let p=await sb.from('profiles').select('pseudo,role,promo,promo_verifiee,classement_exos,classement_reel,banni').eq('id',user.id).single();
     if(p.error)p=await sb.from('profiles').select('pseudo,role').eq('id',user.id).single();
     if(p.error)throw p.error;
-    if(p.data.banni){await sb.auth.signOut();S.user=null;S.role='';S.loading=false;S.msg='Ce compte a été suspendu par un administrateur.';S.ko=true;return render()}
+    if(p.data.banni){await sb.auth.signOut();S.user=null;setRole('');S.loading=false;S.msg='Ce compte a été suspendu par un administrateur.';S.ko=true;return render()}
     S.prof={promo:p.data.promo||null,verif:!!p.data.promo_verifiee,cex:!!p.data.classement_exos,cre:!!p.data.classement_reel};S.G={};S.gp=null;S.cl.promo=S.prof.promo;
-    S.pseudo=p.data.pseudo;S.role=p.data.role;await annLoad();
+    S.pseudo=p.data.pseudo;setRole(p.data.role);await verifAdmin();await annLoad();
     await loadData();await loadMine();loadNotifs();
   }catch(e){S.err=e.message||String(e)}
   S.loading=false;render();
@@ -1555,7 +1565,7 @@ async function login(){
   if(!r.data.session)return flash('Compte créé : confirme ton e-mail, puis connecte-toi.');
   S.msg='';await enter(r.data.user);
 }
-async function logout(){try{await flushNotes()}catch(e){}await sb.auth.signOut();S.user=null;S.role='';S.edit=false;S.msg='';S.NR={};S.RES={};S.N=null;S.photos=[];S.nst='';S.nf=null;S.nh=null;render()}
+async function logout(){try{await flushNotes()}catch(e){}await sb.auth.signOut();S.user=null;setRole('');S.edit=false;S.msg='';S.NR={};S.RES={};S.N=null;S.photos=[];S.nst='';S.nf=null;S.nh=null;render()}
 const refused=r=>r.error?fr(r.error.message):(!r.data||!r.data.length)?'Modification refusée (droits insuffisants).':'';
 async function saveIntro(){
   const v=$('ei').value,r=await sb.from('contenus').upsert({cle:'accueil.intro',valeur:v}).select();
@@ -2346,7 +2356,7 @@ function admHtml(){
 
 async function boot(){
   if(!sb)return flash('Impossible de charger Supabase : vérifie ta connexion internet.',1);
-  sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'){S.user=null;S.role='';S.edit=false;S.NR={};S.RES={};S.N=null;S.photos=[];render()}});
+  sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'){S.user=null;setRole('');S.edit=false;S.NR={};S.RES={};S.N=null;S.photos=[];render()}});
   const {data}=await sb.auth.getSession();
   if(data.session)await enter(data.session.user);else render();
 }
