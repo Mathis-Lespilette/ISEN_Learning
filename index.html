@@ -194,7 +194,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.pk=null;render();if(v==='compte'&&sb&&S.user)acctLoad();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){admLoadU()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.pk=null;render();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){admLoadU()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -1086,6 +1086,7 @@ function acctView(){
   const all=agg(Object.values(CHAPS).flat().flatMap(c=>c.ty)),tried=all.ok+all.ko,PT=(S.ptAll||[]).filter(x=>x.max>0),
     avg=PT.length?PT.reduce((s,x)=>s+x.note/x.max*20,0)/PT.length:null,rate=pct(all.ok,tried);
   return `<h1>Mon compte</h1>
+  ${nfHtml()}
   <div class="cards" style="margin-bottom:14px">
     <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Moyenne générale</p><div class="big">${tried?rate+' %':'—'}</div><p style="margin:0">${tried?`réussite sur les exos tentés, soit ${f1(rate/5)} / 20`:'Aucun exercice tenté pour le moment.'}</p></div>
     <div class="card" style="border-left-color:#3b6fd4"><p style="margin:0">Avancement</p><div class="big">${all.ok} / ${all.n}</div><div class="bar"><i style="width:${pct(all.ok,all.n)}%"></i></div><p style="margin:6px 0 0">exercices réussis (${pct(all.ok,all.n)} %), ${all.ko} ratés</p></div>
@@ -1335,6 +1336,92 @@ const privHtml=()=>{const p=S.prof||{};return `<section class="panel" style="mar
     <p class="note" style="margin:0">Années accessibles : ${S.role==='admin'?'toutes (admin)':S.ann?(S.ann.length?S.ann.map(y=>YN[y]).join(', '):'aucune (promo à renseigner)'):'—'}.</p>
     <p class="note" style="margin:0">Décoché = privé. Seul ton pseudo est affiché, jamais le détail de tes résultats ni tes fichiers.</p>
     <div class="row" style="margin:0"><button class="btn" onclick="savePriv()">Enregistrer</button></div></div></section>`};
+
+/* ===== Notifications ===== */
+S.nf=null;S.nm={t:'',c:'',mode:'all',promo:null,sel:{}};S.nh=null;
+const nfU=()=>(S.nf||[]).filter(n=>!n.lu_le).length;
+async function loadNotifs(){
+  if(!sb||!S.user)return;
+  const r=await sb.from('notifs').select('id,titre,corps,created_at,lu_le').eq('user_id',S.user.id).order('created_at',{ascending:false}).limit(100);
+  if(r.error){S.nf=S.nf||[];S.nfe=fr(r.error.message);return}
+  S.nfe='';const old=nfU();S.nf=r.data||[];
+  if(S.user&&(S.v==='compte'||nfU()!==old))render();
+}
+async function nfRead(id){
+  const ids=id?[id]:(S.nf||[]).filter(n=>!n.lu_le).map(n=>n.id);if(!ids.length)return;
+  const t=new Date().toISOString(),r=await sb.from('notifs').update({lu_le:t}).in('id',ids).select('id');
+  if(r.error)return flash(fr(r.error.message),1);
+  S.nf.forEach(n=>{if(ids.includes(n.id))n.lu_le=t});render();
+}
+async function nfDel(id){
+  const r=await sb.from('notifs').delete().eq('id',id).select('id');
+  if(r.error)return flash(fr(r.error.message),1);
+  S.nf=S.nf.filter(n=>n.id!==id);render();
+}
+const nfBody=t=>esc(t).replace(/\n/g,'<br>');
+function nfHtml(){
+  if(S.nf===null)return '';
+  const U=nfU();
+  return `<section class="panel" style="margin-bottom:14px"><h3>Notifications${U?` <span class="badge">${U} non lue${U>1?'s':''}</span>`:''}</h3>
+  ${S.nfe?`<p class="note bad">${esc(S.nfe)}</p>`:''}
+  ${S.nf.length?`<ul class="q" style="display:block">${S.nf.map(n=>`<li style="display:block;border-left:3px solid ${n.lu_le?'var(--line)':'var(--acc)'};padding-left:10px;margin-bottom:10px">
+    <div class="row" style="margin:0;justify-content:space-between"><strong>${esc(n.titre)}</strong><span class="note" style="margin:0">${new Date(n.created_at).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</span></div>
+    <div style="margin:6px 0;line-height:1.6">${nfBody(n.corps)}</div>
+    <div class="row" style="margin:0">${n.lu_le?'':`<button class="btn" onclick="nfRead('${n.id}')">Marquer comme lue</button>`}<button class="btn" onclick="nfDel('${n.id}')">Supprimer</button></div></li>`).join('')}</ul>
+    ${U>1?'<div class="row" style="margin:0"><button class="btn" onclick="nfRead()">Tout marquer comme lu</button></div>':''}`
+  :'<div class="empty">Aucune notification pour le moment.</div>'}</section>`;
+}
+setInterval(()=>{if(S.user&&!document.hidden)loadNotifs()},120000);
+/* admin : envoi */
+async function admLoadN(){
+  if(S.role!=='admin')return;
+  const r=await sb.from('notifs').select('envoi_id,titre,corps,created_at,lu_le').order('created_at',{ascending:false}).limit(2000);
+  if(r.error){S.nh=null;S.nhe=fr(r.error.message);if(S.v==='admin')render();return}
+  const g={};(r.data||[]).forEach(x=>{const e=g[x.envoi_id]=g[x.envoi_id]||{id:x.envoi_id,titre:x.titre,corps:x.corps,at:x.created_at,n:0,lus:0};e.n++;if(x.lu_le)e.lus++});
+  S.nh=Object.values(g).sort((a,b)=>b.at.localeCompare(a.at));S.nhe='';
+  if(S.v==='admin')render();
+}
+function nmSet(k,v){S.nm[k]=v;render()}
+function nmPick(id,on){if(on)S.nm.sel[id]=1;else delete S.nm.sel[id]}
+function nmAll(on){const L=nmCands();S.nm.sel={};if(on)L.forEach(u=>S.nm.sel[u.id]=1);render()}
+const nmCands=()=>(S.admU||[]).filter(u=>!u.banni&&u.id!==S.user.id);
+function nmTargets(){
+  const m=S.nm,L=nmCands();
+  return m.mode==='all'?L:m.mode==='promo'?L.filter(u=>u.promo===Number(m.promo)):L.filter(u=>m.sel[u.id]);
+}
+async function nmSend(){
+  const m=S.nm,T=nmTargets(),t=m.t.trim(),c=m.c.trim();
+  if(!t||!c)return flash('Titre et message obligatoires.',1);
+  if(!T.length)return flash('Aucun destinataire.',1);
+  const eid=uid(),rows=T.map(u=>({envoi_id:eid,user_id:u.id,titre:t,corps:c,envoye_par:S.user.id}));
+  const r=await sb.from('notifs').insert(rows);
+  if(r.error)return flash(fr(r.error.message)+(/relation|notifs/i.test(r.error.message)?' (maj-notifications.sql lancé ?)':''),1);
+  S.nm.t='';S.nm.c='';S.nm.sel={};flash('Notification envoyée à '+T.length+' compte'+(T.length>1?'s':'')+'.');admLoadN();
+}
+async function nmDel(id){
+  const r=await sb.from('notifs').delete().eq('envoi_id',id);
+  if(r.error)return flash(fr(r.error.message),1);
+  admLoadN();
+}
+function admNotifs(){
+  const m=S.nm,L=nmCands(),promos=[...new Set(L.map(u=>u.promo).filter(Boolean))].sort((a,b)=>b-a);
+  if(m.mode==='promo'&&!m.promo)m.promo=promos[0]||null;
+  const T=nmTargets();
+  return `<section class="panel"><h3>Envoyer une notification</h3>
+  <p class="note" style="margin:0 0 8px">Chaque destinataire la reçoit dans « Mon compte » (pastille sur l'onglet tant qu'elle n'est pas lue). Les équations $…$ sont acceptées.</p>
+  <input id="nm_t" placeholder="Titre" maxlength="120" value="${esc(m.t)}" oninput="S.nm.t=this.value" style="width:100%;margin-bottom:8px" aria-label="Titre">
+  <textarea id="nm_c" placeholder="Message…" maxlength="4000" oninput="S.nm.c=this.value" aria-label="Message">${esc(m.c)}</textarea>
+  <div class="row"><span class="note" style="margin:0">Destinataires :</span>
+   ${[['all','Tous les comptes'],['promo','Une promo'],['pick','Choisir']].map(([k,l])=>`<button class="lvl${m.mode===k?' on':''}" onclick="nmSet('mode','${k}')">${l}</button>`).join('')}
+   ${m.mode==='promo'?`<select onchange="nmSet('promo',this.value)" aria-label="Promo">${promos.map(p=>`<option${String(p)===String(m.promo)?' selected':''}>${p}</option>`).join('')}</select>`:''}</div>
+  ${m.mode==='pick'?`<div class="row" style="margin:0 0 6px"><button class="btn" onclick="nmAll(true)">Tout cocher</button><button class="btn" onclick="nmAll(false)">Tout décocher</button></div>
+   <div style="max-height:220px;overflow:auto;border:1px solid var(--line);padding:6px 10px;margin-bottom:8px">${L.map(u=>`<label style="display:block"><input type="checkbox" ${m.sel[u.id]?'checked':''} onchange="nmPick('${u.id}',this.checked);render()"> ${esc(u.pseudo)} <span class="note" style="margin:0">${u.promo?'promo '+u.promo:'sans promo'}</span></label>`).join('')||'<div class="empty">Aucun compte.</div>'}</div>`:''}
+  <div class="row" style="margin:0"><button class="btn" onclick="nmSend()">Envoyer à ${T.length} compte${T.length>1?'s':''}</button></div></section>
+  <section class="panel" style="margin-top:14px"><h3>Envois précédents</h3>
+  ${S.nhe?`<p class="bad">${esc(S.nhe)}</p>`:S.nh===null?'<div class="empty">Chargement…</div>'
+   :S.nh.length?`<ul class="q" style="display:block">${S.nh.map(e=>`<li style="display:block;margin-bottom:10px"><div class="row" style="margin:0;justify-content:space-between"><strong>${esc(e.titre)}</strong><span class="note" style="margin:0">${new Date(e.at).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})} · ${e.lus}/${e.n} lues</span></div>
+   <div class="note" style="margin:4px 0">${nfBody(e.corps)}</div><button class="btn" onclick="nmDel('${e.id}')">Supprimer pour tous</button></li>`).join('')}</ul>`:'<div class="empty">Rien envoyé pour le moment.</div>'}</section>`;
+}
 /* ===== Admin : comptes et promos ===== */
 async function admSaveU(id){
   const raw=$('au_'+id).value.trim(),p=raw===''?null:Number(raw);
@@ -1383,7 +1470,7 @@ function render(){
   $('path').textContent=['depot','compte','admin','classement'].includes(S.v)?'~/'+S.v+'$':S.v==='grille'?'~/a'+S.y+'/notes$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+'$';
   $('nav').innerHTML=S.user?`<button class="${S.v==='home'?'on':''}" onclick="go('home')">Accueil${S.y!==null?' · '+YN[S.y]:''}</button>`
     +(S.y===null?[]:Object.keys(D)).map(k=>`<button class="dn d-${k}${inD&&S.d===k?' on':''}" onclick="go('dom','${k}')">${D[k]}</button>`).join('')
-    +['classement','depot','compte','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}</button>`).join(''):'';
+    +['classement','depot','compte','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}${k==='compte'&&nfU()?` <span class="badge">${nfU()}</span>`:''}</button>`).join(''):'';
   $('who').innerHTML=S.user?`<div>${esc(S.pseudo)} (${S.role==='admin'?'admin':'membre'})</div><div>${S.prof&&S.prof.promo?'Promo '+esc(S.prof.promo)+(S.prof.verif?' ✓':' (à vérifier)'):'<a href="#" onclick="go(\'compte\');return false" style="color:inherit">Promo non renseignée</a>'}</div>`
     +(S.role==='admin'?`<button class="btn" aria-pressed="${S.edit}" onclick="S.edit=!S.edit;render()">Mode édition : ${S.edit?'oui':'non'}</button>`:'')
     +`<button class="btn" onclick="logout()">Se déconnecter</button>`:'';
@@ -1438,7 +1525,7 @@ async function enter(user){
     if(p.data.banni){await sb.auth.signOut();S.user=null;S.role='';S.loading=false;S.msg='Ce compte a été suspendu par un administrateur.';S.ko=true;return render()}
     S.prof={promo:p.data.promo||null,verif:!!p.data.promo_verifiee,cex:!!p.data.classement_exos,cre:!!p.data.classement_reel};S.G={};S.gp=null;S.cl.promo=S.prof.promo;
     S.pseudo=p.data.pseudo;S.role=p.data.role;await annLoad();
-    await loadData();await loadMine();
+    await loadData();await loadMine();loadNotifs();
   }catch(e){S.err=e.message||String(e)}
   S.loading=false;render();
 }
@@ -1455,7 +1542,7 @@ async function login(){
   if(!r.data.session)return flash('Compte créé : confirme ton e-mail, puis connecte-toi.');
   S.msg='';await enter(r.data.user);
 }
-async function logout(){try{await flushNotes()}catch(e){}await sb.auth.signOut();S.user=null;S.role='';S.edit=false;S.msg='';S.NR={};S.RES={};S.N=null;S.photos=[];S.nst='';render()}
+async function logout(){try{await flushNotes()}catch(e){}await sb.auth.signOut();S.user=null;S.role='';S.edit=false;S.msg='';S.NR={};S.RES={};S.N=null;S.photos=[];S.nst='';S.nf=null;S.nh=null;render()}
 const refused=r=>r.error?fr(r.error.message):(!r.data||!r.data.length)?'Modification refusée (droits insuffisants).':'';
 async function saveIntro(){
   const v=$('ei').value,r=await sb.from('contenus').upsert({cle:'accueil.intro',valeur:v}).select();
@@ -1941,7 +2028,7 @@ async function annLoad(){
   S.ann=null;
   try{const r=await sb.rpc('mes_annees');S.ann=(r.error||!Array.isArray(r.data))?null:r.data.map(Number)}catch(e){S.ann=null}
 }
-const AT={depots:'Dépôts',comptes:'Comptes',promos:'Promos et accès',contenu:'Contenu',grilles:'Grilles de notes'};
+const AT={depots:'Dépôts',comptes:'Comptes',promos:'Promos et accès',contenu:'Contenu',grilles:'Grilles de notes',notifs:'Notifications'};
 function admTabs(){
   const todo=(S.admU||[]).filter(u=>!u.promo_verifiee).length,pend=DB.docs.filter(d=>d.statut==='en_attente').length,n={depots:pend,comptes:todo};
   return `<div class="tabs" style="--c:#3b6fd4">${Object.keys(AT).map(k=>`<button class="tab${S.at===k?' on':''}" onclick="S.at='${k}';render()">${AT[k]}${n[k]?` <span class="badge">${n[k]}</span>`:''}</button>`).join('')}</div>`;
@@ -1966,6 +2053,7 @@ async function admLoadU(){
   S.admU=u.error?null:(u.data||[]);S.admUe=u.error?u.error.message:'';
   S.pa={};S.paE=a.error?a.error.message:'';(a.data||[]).forEach(x=>{S.pa[x.promo]={annees:x.annees,rec:!!x.voir_recent}});
   if(S.v==='admin')render();
+  admLoadN();
 }
 const promoList=()=>{const s=new Set([acadYear(),acadYear()-1]);(S.admU||[]).forEach(u=>u.promo&&s.add(u.promo));Object.keys(S.pa||{}).forEach(p=>s.add(Number(p)));MODS.forEach(m=>m.pr&&s.add(m.pr));(S.admP||[]).forEach(p=>s.add(p));return[...s].sort((a,b)=>b-a)};
 /* comptes */
@@ -2100,7 +2188,7 @@ function admGrilles(){
     <button class="btn" onclick="S.gp=Number($('ggp').value);S.y=Number($('gga').value);S.edit=true;go('grille')">Ouvrir la grille</button></div></section>`;
 }
 function admHtml(){
-  const body={depots:admDepots,comptes:admUsers,promos:admPromos,contenu:admContenu,grilles:admGrilles}[S.at||'depots']();
+  const body={depots:admDepots,comptes:admUsers,promos:admPromos,contenu:admContenu,grilles:admGrilles,notifs:admNotifs}[S.at||'depots']();
   return `<h1>Admin</h1>${admTabs()}${body}`;
 }
 
