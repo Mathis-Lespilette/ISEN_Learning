@@ -204,7 +204,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;render();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){admLoadU()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;render();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='depot'&&sb&&S.user)loadQuota();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){admLoadU()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -2027,6 +2027,20 @@ function annHtml(){
 }
 
 /* Dépôt (membres) */
+async function loadQuota(){
+  if(!sb||!S.user)return;
+  try{const r=await sb.rpc('mon_quota');S.q=r.error?null:r.data}catch(e){S.q=null}
+  if(S.v==='depot')render();
+}
+function quotaMsg(q,n){
+  if(!q)return '';
+  if(q.bloque)return 'Tes dépôts sont suspendus par un admin.';
+  if(q.attente>=q.max_attente)return `Tu as déjà ${q.attente} document${q.attente>1?'s':''} en attente de tri (maximum ${q.max_attente}). Patiente le temps que l'admin les traite.`;
+  if(q.jour>=q.max_jour)return `Limite de ${q.max_jour} envois par 24 h atteinte. Réessaie plus tard.`;
+  if(n>q.max_attente-q.attente)return `Tu peux encore déposer ${q.max_attente-q.attente} document${q.max_attente-q.attente>1?'s':''} en attente (maximum ${q.max_attente}).`;
+  if(n>q.max_jour-q.jour)return `Il te reste ${q.max_jour-q.jour} envoi${q.max_jour-q.jour>1?'s':''} sur les dernières 24 h (maximum ${q.max_jour}).`;
+  return '';
+}
 async function upload(){
   const f=[...$('df').files],m=$('dd').value,ty=$('dt').value,t=$('dti').value.trim();
   if(!f.length)return flash('Choisis au moins un fichier.',1);
@@ -2035,25 +2049,28 @@ async function upload(){
     if(!Object.values(MT).includes(mts[i]))return flash(`« ${f[i].name} » : seuls les PDF et images (JPEG, PNG, WebP) sont acceptés.`,1);
     if(f[i].size>20*1048576)return flash(`« ${f[i].name} » dépasse 20 Mo.`,1);
   }
+  await loadQuota();
+  const qm=quotaMsg(S.q,f.length);if(qm)return flash(qm,1);
   S.busy=true;S.msg='Envoi en cours…';S.ko=false;render();
   let n=0;
   try{
     for(let i=0;i<f.length;i++){
       const path=S.user.id+'/'+uid()+'-'+clean(f[i].name);
       const u=await sb.storage.from('documents').upload(path,f[i],{contentType:mts[i],upsert:false});
-      if(u.error)throw new Error(fr(u.error.message));
+      if(u.error)throw new Error(/row-level security|policy/i.test(u.error.message)?(quotaMsg(S.q,1)||'Dépôt refusé (quota atteint ou dépôts suspendus).'):fr(u.error.message));
       const titre=(f.length===1&&t)?t:f[i].name.replace(/\.[^.]+$/,'');
       const r=await sb.from('documents').insert({type:ty,titre:titre.slice(0,200),matiere:m,fichier_path:path,statut:'en_attente',depose_par:S.user.id}).select();
       if(refused(r))throw new Error(refused(r));
       n++;
     }
-    await reloadDocs();S.busy=false;flash(n+' fichier'+(n>1?'s':'')+' envoyé'+(n>1?'s':'')+' : en attente de tri par un admin.');
+    await reloadDocs();S.busy=false;loadQuota();flash(n+' fichier'+(n>1?'s':'')+' envoyé'+(n>1?'s':'')+' : en attente de tri par un admin.');
   }catch(e){S.busy=false;try{await reloadDocs()}catch(_){}flash((n?n+' envoyé(s), puis erreur : ':'Envoi impossible : ')+(e.message||e),1)}
 }
 function depotHtml(){
   const mine=DB.docs.filter(d=>d.depose_par===S.user.id);
   return `<h1>Dépôt</h1>
   <p class="lead">Ajoute tes documents (PDF ou images, 20 Mo maximum). Un admin les trie et les publie dans le bon chapitre.</p>
+  ${S.q?`<p class="note" style="margin:0 0 10px">En attente de tri : <b>${S.q.attente} / ${S.q.max_attente}</b> · envois sur 24 h : <b>${S.q.jour} / ${S.q.max_jour}</b>${S.q.bloque?' · <span class="bad">dépôts suspendus</span>':''}</p>`:''}
   <section class="panel"><div class="row">
     <select id="dd" aria-label="Matière">${Object.keys(D).map(k=>`<option value="${k}"${k===S.d?' selected':''}>${D[k]}</option>`).join('')}</select>
     <select id="dt" aria-label="Type">${Object.keys(TY).map(k=>`<option value="${k}">${TY[k]}</option>`).join('')}</select>
@@ -2133,6 +2150,24 @@ function admTabs(){
   const todo=(S.admU||[]).filter(u=>!u.promo_verifiee).length,pend=DB.docs.filter(d=>d.statut==='en_attente').length,n={depots:pend,comptes:todo};
   return `<div class="tabs" style="--c:#3b6fd4">${Object.keys(AT).map(k=>`<button class="tab${S.at===k?' on':''}" onclick="S.at='${k}';render()">${AT[k]}${n[k]?` <span class="badge">${n[k]}</span>`:''}</button>`).join('')}</div>`;
 }
+const QD=7,QJ=15;
+function admQ(u){
+  const mine=DB.docs.filter(d=>d.depose_par===u.id),att=mine.filter(d=>d.statut==='en_attente').length,
+    j=mine.filter(d=>Date.now()-new Date(d.created_at).getTime()<864e5).length,ma=u.quota_attente??QD,mj=u.quota_jour??QJ;
+  return `<div class="edr" style="width:100%;margin:8px 0 0;font-size:12px"><span class="note" style="margin:0">Dépôts : <b${att>=ma?' class="bad"':''}>${att}/${ma}</b> en attente · <b${j>=mj?' class="bad"':''}>${j}/${mj}</b> sur 24 h${u.depot_bloque?' · <span class="bad">bloqués</span>':''}</span>
+    <label>Max en attente<input type="number" min="0" id="qa_${u.id}" value="${ma}" style="width:80px"></label>
+    <label>Max / 24 h<input type="number" min="0" id="qj_${u.id}" value="${mj}" style="width:80px"></label>
+    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="qb_${u.id}" ${u.depot_bloque?'checked':''}> bloquer les dépôts</label>
+    <button class="btn" onclick="admQuota('${u.id}')">Enregistrer le quota</button><button class="btn" onclick="admQuota('${u.id}',1)" title="Reviens aux valeurs par défaut (${QD} / ${QJ})">Par défaut</button></div>`;
+}
+async function admQuota(id,reset){
+  const a=parseInt($('qa_'+id).value,10),j=parseInt($('qj_'+id).value,10),b=$('qb_'+id).checked;
+  if(!reset&&(!(a>=0)||!(j>=0)))return flash('Quotas invalides (nombres entiers ≥ 0).',1);
+  const pa=reset?null:a,pj=reset?null:j,r=await sb.rpc('fixer_quota',{p_id:id,p_attente:pa,p_jour:pj,p_bloque:reset?false:b});
+  if(r.error)return flash(fr(r.error.message)+(/function|fixer_quota/i.test(r.error.message)?' (maj-quota-depots.sql lancé ?)':''),1);
+  const u=S.admU.find(x=>x.id===id);u.quota_attente=pa;u.quota_jour=pj;u.depot_bloque=reset?false:b;
+  flash(reset?'Quota remis par défaut.':'Quota enregistré.');
+}
 async function admBan(id,on){
   if(on&&S.cfb!==id){S.cfb=id;return render()}
   const m=on?($('bm_'+id)||{}).value||'':'';
@@ -2149,7 +2184,8 @@ async function admSupp(id){
   S.admU=S.admU.filter(x=>x.id!==id);flash('Compte supprimé définitivement.');
 }
 async function admLoadU(){
-  const [u,a]=await Promise.all([sb.from('profiles').select('id,pseudo,role,promo,promo_verifiee,created_at,banni,banni_motif').order('created_at'),sb.from('acces_promo').select('promo,annees,voir_recent')]);
+  const [u,a]=await Promise.all([sb.from('profiles').select('id,pseudo,role,promo,promo_verifiee,created_at,banni,banni_motif,quota_attente,quota_jour,depot_bloque').order('created_at'),sb.from('acces_promo').select('promo,annees,voir_recent')]);
+  if(u.error){const u2=await sb.from('profiles').select('id,pseudo,role,promo,promo_verifiee,created_at').order('created_at');if(!u2.error)Object.assign(u,{error:null,data:u2.data})}
   S.admU=u.error?null:(u.data||[]);S.admUe=u.error?u.error.message:'';
   S.pa={};S.paE=a.error?a.error.message:'';(a.data||[]).forEach(x=>{S.pa[x.promo]={annees:x.annees,rec:!!x.voir_recent}});
   if(S.v==='admin')render();
@@ -2164,7 +2200,7 @@ const admUsers=()=>{
   return `<section class="panel"><h3>Comptes (${S.admU.length})</h3>
     <p class="note" style="margin:0 0 8px">Vérifie la promo de chaque compte. Coche « vérifiée » : le membre ne pourra plus la modifier. « Bannir » bloque la connexion (réversible) ; « Supprimer » efface le compte et ses données (définitif).</p>
     <div class="tabs" style="--c:#3b6fd4;margin-bottom:10px"><button class="tab${f==='all'?' on':''}" onclick="S.cft='all';render()">Tous</button><button class="tab${f==='todo'?' on':''}" onclick="S.cft='todo';render()">À vérifier (${S.admU.filter(u=>!u.promo_verifiee).length})</button><button class="tab${f==='ban'?' on':''}" onclick="S.cft='ban';render()">Bannis (${S.admU.filter(u=>u.banni).length})</button></div>
-    ${L.length?`<ul class="q">${L.map(u=>`<li><span>${esc(u.pseudo)} <span class="note" style="margin:0">${u.role==='admin'?'admin':''}</span>${u.banni?` <span class="bad">banni${u.banni_motif?' : '+esc(u.banni_motif):''}</span>`:''}</span>
+    ${L.length?`<ul class="q">${L.map(u=>`<li style="flex-wrap:wrap"><span>${esc(u.pseudo)} <span class="note" style="margin:0">${u.role==='admin'?'admin':''}</span>${u.banni?` <span class="bad">banni${u.banni_motif?' : '+esc(u.banni_motif):''}</span>`:''}</span>
     <span class="row" style="margin:0"><input type="number" id="au_${u.id}" value="${esc(u.promo||'')}" placeholder="promo" style="width:90px" aria-label="Promo de ${esc(u.pseudo)}">
     <label class="note" style="margin:0"><input type="checkbox" id="av_${u.id}" ${u.promo_verifiee?'checked':''}> vérifiée</label>
     <button class="btn" onclick="admSaveU('${u.id}')">Enregistrer</button>
@@ -2172,7 +2208,7 @@ const admUsers=()=>{
       :S.cfb===u.id?`<input id="bm_${u.id}" placeholder="Motif (facultatif)" style="width:160px" aria-label="Motif du bannissement"><button class="btn" onclick="admBan('${u.id}',true)">Confirmer le ban</button><button class="btn" onclick="S.cfb=null;render()">Annuler</button>`
       :`<button class="btn" onclick="admBan('${u.id}',true)">Bannir</button>`}
     ${u.role==='admin'||u.id===S.user.id?'':S.cfs===u.id?`<span class="bad">Définitif !</span><button class="btn" style="border-color:#ef4444" onclick="admSupp('${u.id}')">Confirmer la suppression</button><button class="btn" onclick="S.cfs=null;render()">Annuler</button>`
-      :`<button class="btn" onclick="admSupp('${u.id}')">Supprimer</button>`}</span></li>`).join('')}</ul>`:`<div class="empty">${f==='ban'?'Aucun compte banni.':'Rien à vérifier.'}</div>`}</section>`;
+      :`<button class="btn" onclick="admSupp('${u.id}')">Supprimer</button>`}</span>${u.role==='admin'?'':admQ(u)}</li>`).join('')}</ul>`:`<div class="empty">${f==='ban'?'Aucun compte banni.':'Rien à vérifier.'}</div>`}</section>`;
 };
 /* promos & accès */
 function paAuto(p,on){document.querySelectorAll('.py_'+p).forEach(i=>{i.disabled=on;if(on)i.checked=pAutoYears(p).includes(Number(i.value))})}
