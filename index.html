@@ -191,7 +191,7 @@ input[type=number]{background:#050a16;border:1px solid var(--line);padding:6px 8
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 const D={maths:'Maths',physique:'Physique',prog:'Prog',hum:'Humanités et Langues'};
-const V={home:'Accueil',cours:'Cours',exos:'Exos',annales:'Annales',cartes:'Cartes',depot:'Dépôt',compte:'Mon compte',classement:'Classement',grille:'Mon tableau de notes',admin:'Admin'};
+const V={home:'Accueil',cours:'Cours',exos:'Exos',annales:'Annales',cartes:'Cartes',feuilles:'Feuilles',depot:'Dépôt',compte:'Mon compte',classement:'Classement',grille:'Mon tableau de notes',admin:'Admin'};
 const LV=[
   {n:'Guidé',t:'Indications complètes, étape par étape.'},
   {n:'Intermédiaire',t:'Un seul indice, à demander.'},
@@ -225,7 +225,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;if(v==='cartes')S.xc=null;render();if(v==='cartes'&&sb&&S.user)cartesLoad();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='depot'&&sb&&S.user)loadQuota();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){verifAdmin();admLoadU();xcQLoad()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;S.fe=null;S.fd=null;if(v==='cartes')S.xc=null;render();if(v==='cartes'&&sb&&S.user)cartesLoad();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='depot'&&sb&&S.user)loadQuota();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){verifAdmin();admLoadU();xcQLoad()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -290,6 +290,7 @@ const views={
       <button class="card topic" onclick="go('exos')"><h2>Exos</h2><p>Exercices types, du guidé à l'examen.</p></button>
       <button class="card topic" style="border-left-color:#3b6fd4" onclick="go('annales')"><h2>Annales</h2><p>Sujets avec ou sans correction.</p></button>
       <button class="card topic" style="border-left-color:#b78bff" onclick="go('cartes')"><h2>Cartes</h2><p>Cartes mentales et schémas, cartes de l'admin.</p></button>
+      ${(fOf(c.id).filter(f=>f.publie||ed()).length||ed())?`<button class="card topic" style="border-left-color:#e0a040" onclick="go('feuilles')"><h2>Feuilles d'exos</h2><p>Évaluations notées, composées par l'admin.</p></button>`:''}
     </div>`;
   },
   cours(){
@@ -312,6 +313,7 @@ const views={
         <p class="note">Tes notes sont enregistrées dans ton compte (toi seul les vois) et te suivent d'un appareil à l'autre.</p></section>
     </div>`;
   },
+  feuilles(){return feuillesView()},
   exos(){
     if(S.topic===null)return topicList();
     const tp=CHAP().t[S.topic],R=getR();
@@ -796,11 +798,6 @@ const CALC={
     fields:[{id:'x',t:'num',label:'∂f/∂x(A) =',ans:px},{id:'y',t:'num',label:'∂f/∂y(A) =',ans:py},
      {id:'z',t:'expr',vars:XY,label:'plan tangent z =',fn:v=>f0+px*(v.x-a)+py*(v.y-b)}],
     sol:[`${TL(PX,d.fx)} ; ${TL(PY,d.fy)}`,`f(A) ≈ ${fmt(f0)}, ∂f/∂x(A) ≈ ${fmt(px)}, ∂f/∂y(A) ≈ ${fmt(py)}`,`z ≈ ${fmt(f0)} + ${fmt(px)}(x − ${a}) + ${fmt(py)}(y − ${b})`]}]}}},
- limites:{n:'Limites en (0,0)',g(r){
-  return{titre:'Limites en (0,0)',consigne:"Détermine la limite en (0,0) de chaque fonction. §Écris un nombre, ou « n'existe pas » s'il n'y a pas de limite.",
-   items:pickN(r,LT.length,3).map(k=>{const d=LT[k](r);
-    return{raw:d,q:`${LM(d.f)}`,hints:["Essaie les chemins y = 0, x = 0 puis y = x : si deux valeurs diffèrent, il n'y a pas de limite.","Si les chemins donnent la même valeur, passe en polaires (x = r·cosθ, y = r·sinθ) et majore par une fonction de r seul."],
-     fields:[{id:'l',t:'lim',label:'limite =',ans:d.l}],sol:[d.l===null?"La limite n'existe pas.":'Limite = '+d.l,d.s]}})}}},
  continuite:{n:'Continuité en (0,0)',g(r){
   const k=LT_CONT[ri(r,0,LT_CONT.length-1)],d=LT[k](r),c=CT[ri(r,0,CT.length-1)](r);
   return{titre:'Continuité',consigne:'Étude de la continuité en (0,0).',items:[
@@ -818,7 +815,7 @@ const CALC={
    {raw:f,q:`${F(f)}`,hints:["Point critique : résous ∂f/∂x = 0 et ∂f/∂y = 0 (système linéaire).","Notation de Monge : r = ∂²f/∂x², s = ∂²f/∂x∂y, t = ∂²f/∂y². Si rt − s² > 0 : extremum (minimum si r > 0, maximum si r < 0) ; si rt − s² < 0 : point selle."],
     fields:[{id:'x',t:'num',label:'abscisse x₀ =',ans:x0},{id:'y',t:'num',label:'ordonnée y₀ =',ans:y0},{id:'n',t:'choice',label:'nature :',opts:['minimum local','maximum local','point selle'],ans:nat}],
     sol:[`Le point critique est (${x0}, ${y0}).`,`r = ${2*a}, s = ${c}, t = ${2*b}, rt − s² = ${det}.`,`Nature : ${nat}.`]}]}}},
- bestlim:{n:'Best-of de limites',g(r,ex){
+ limites:{n:'Limites en (0,0)',g(r,ex){
   const P=[
    {f:'sin(x)*(exp(y)-1)/(x*y)',l:1,s:[R_`On sépare les variables : \(\displaystyle\lim\frac{\sin x\,(e^y-1)}{xy}=\Big[\lim_{x\to0}\frac{\sin x}{x}\Big]\Big[\lim_{y\to0}\frac{e^y-1}{y}\Big]\).`,R_`Ce sont deux nombres dérivés en \(0\) : \(\sin'(0)=\cos 0=1\) et \(\exp'(0)=1\). La limite vaut \(1\).`]},
    {f:'(x^8+y^8)/(x^4+y^4)',l:0,s:[R_`La fonction n'est pas définie en \((0,0)\) : pour tester tous les chemins, on passe en polaires. \(f(r\cos\theta,r\sin\theta)=r^4\,\dfrac{\cos^8\theta+\sin^8\theta}{\cos^4\theta+\sin^4\theta}\).`,R_`On remarque \(\cos^8\theta+\sin^8\theta\le\cos^8\theta+2\cos^4\theta\sin^4\theta+\sin^8\theta=(\cos^4\theta+\sin^4\theta)^2\), d'où \(0\le f\le r^4(\cos^4\theta+\sin^4\theta)\le 2r^4\).`,R_`Par encadrement, la limite quand \(r\to0^+\) est nulle indépendamment de \(\theta\) : elle existe et vaut \(0\).`]},
@@ -830,8 +827,8 @@ const CALC={
   const H=["Essaie des chemins : y = 0, x = 0, y = x (ou y = x², x = y²…). Si deux valeurs diffèrent, la limite n'existe pas.","Si les chemins donnent la même valeur, passe en polaires (x = r·cosθ, y = r·sinθ) et encadre par une fonction de r qui tend vers 0 (ou reconnais un nombre dérivé)."];
   let L;
   if(ex===1)L=P;
-  else{const pool=P.concat(LT.map(g=>{const d=g(r);return{f:d.f,l:d.l,s:[(d.l===null?"La limite n'existe pas.":'Limite = '+d.l),d.s]}}));L=pickN(r,pool.length,6).map(i=>pool[i])}
-  return{titre:'Best-of de limites',consigne:"Déterminer les limites suivantes. §Écris un nombre, ou « n'existe pas » s'il n'y a pas de limite.",
+  else{const pool=P.concat(LT.map(g=>{const d=g(r);return{f:d.f,l:d.l,s:[(d.l===null?"La limite n'existe pas.":'Limite = '+d.l),d.s]}}));L=pickN(r,pool.length,3).map(i=>pool[i])}
+  return{titre:ex===1?'Best-of de limites':'Limites en (0,0)',consigne:"Déterminer les limites suivantes. §Écris un nombre, ou « n'existe pas » s'il n'y a pas de limite.",
    items:L.map(d=>({q:LM(d.f),hints:H,fields:[{id:'l',t:'lim',label:'limite =',ans:d.l}],sol:d.l===null?["La limite n'existe pas.",...d.s]:['Limite = '+d.l,...d.s]}))}}},
  normcalc:{n:'Calculs avec les normes',g(r,ex){
   const k3=['₁','₂','∞'],nn=(u,k)=>nrm(u,k===0?1:k===1?2:3),ex2=v=>{const s=v[0]*v[0]+v[1]*v[1],q=Math.round(Math.sqrt(s));return q*q===s?String(q):'√'+s};
@@ -859,20 +856,22 @@ const CALC={
   const u=rv(),v=rv(),a=rv(),b=rv(),ks=[0,1,2].sort(()=>r()-.5);
   return{titre:'Calculs avec les normes',consigne:"§Les réponses exactes peuvent s'écrire avec sqrt (ex : sqrt(13)).",items:[vecItem('u',u),vecItem('v',v),triItem(a,b,[0,1,2])]};
  }},
- normes:{n:'Normes, distances et boules',g(r){
+ normes:{n:'Calculs avec les normes',g(r,ex){
+  if(ex===1)return CALC.normcalc.g(r,1);
   let u;do{u=[ri(r,-5,5),ri(r,-5,5)]}while(!u[0]&&!u[1]);
   const m=[1,2,3,-1,-2][ri(r,0,4)],p=[0,0,1,-1][ri(r,0,3)],x0=ri(r,-3,3),y0=ri(r,-3,3),dist=Math.abs(m*x0-y0+p)/Math.sqrt(1+m*m),
    kk=[1,2,Infinity][ri(r,0,2)],C=[ri(r,-2,2),ri(r,-2,2)],R=ri(r,2,4);
   let P;do{P=[C[0]+ri(r,-5,5),C[1]+ri(r,-5,5)]}while(false);
   const inb=nrm([P[0]-C[0],P[1]-C[1]],kk)<=R+1e-12,kn=kk===Infinity?'∞':kk;
-  return{titre:'Normes, distances et boules',consigne:'§Les réponses exactes peuvent s\'écrire avec sqrt (ex : sqrt(13)).',items:[
+  const base={titre:'Calculs avec les normes',consigne:'§Les réponses exactes peuvent s\'écrire avec sqrt (ex : sqrt(13)).',items:[
    {q:`u = (${u[0]}, ${u[1]})`,hints:["‖u‖₁ = |x| + |y| ; ‖u‖₂ = √(x² + y²) ; ‖u‖∞ = max(|x|, |y|)."],
     fields:[{id:'1',t:'num',label:'‖u‖₁ =',ans:nrm(u,1)},{id:'2',t:'num',label:'‖u‖₂ =',ans:nrm(u,2)},{id:'i',t:'num',label:'‖u‖∞ =',ans:nrm(u,3)}],
     sol:[`‖u‖₁ = ${nrm(u,1)}`,`‖u‖₂ = √${u[0]*u[0]+u[1]*u[1]} ≈ ${fmt(nrm(u,2))}`,`‖u‖∞ = ${nrm(u,3)}`]},
    {q:`Distance euclidienne du point A = (${x0}, ${y0}) à la droite D : y = ${TX(polyStr([[m,'x'],[p,'']]))}.`,hints:["Écris D sous la forme m·x − y + p = 0, puis d = |m·x₀ − y₀ + p| / √(m² + 1)."],
     fields:[{id:'d',t:'num',label:'d(A, D) =',ans:dist}],sol:[`d = |${m}·${x0} − ${y0} + ${p}| / √${m*m+1} ≈ ${fmt(dist)}`]},
    {q:`B désigne la boule fermée de centre C = (${C[0]}, ${C[1]}) et de rayon ${R} pour la norme ‖·‖${kn === 2 ? '₂' : kn === 1 ? '₁' : '∞'}. Le point P = (${P[0]}, ${P[1]}) appartient-il à B ?`,hints:["P ∈ B si et seulement si ‖P − C‖ ≤ rayon."],
-    fields:[{id:'b',t:'choice',label:'P ∈ B ?',opts:OUI,ans:inb?'oui':'non'}],sol:[`P − C = (${P[0]-C[0]}, ${P[1]-C[1]}), norme ≈ ${fmt(nrm([P[0]-C[0],P[1]-C[1]],kk))}, rayon ${R} : ${inb?'oui':'non'}.`]}]}}},
+    fields:[{id:'b',t:'choice',label:'P ∈ B ?',opts:OUI,ans:inb?'oui':'non'}],sol:[`P − C = (${P[0]-C[0]}, ${P[1]-C[1]}), norme ≈ ${fmt(nrm([P[0]-C[0],P[1]-C[1]],kk))}, rayon ${R} : ${inb?'oui':'non'}.`]}]};
+  base.items.splice(1,0,CALC.normcalc.g(r,2).items[2]);return base}},
  domaine:{n:'Domaine de définition',g(r){
   return{titre:'Domaine de définition',consigne:'Pour chaque fonction, indique si les points proposés appartiennent à son domaine de définition.',
    items:pickN(r,DOM.length,2).map(k=>{const d=DOM[k],pts=[0,1,2].map(()=>[ri(r,-3,3),ri(r,-3,3)]);
@@ -897,7 +896,8 @@ const CALC={
      fields:[{id:'h',t:'num',label:'h′(1) =',ans:v}],
      sol:[`${TL(PX,d.fx)}, ${TL(PY,d.fy)}`,`${TL("x'(t)",c.dx)}, ${TL("y'(t)",c.dy)}`,`(x(1), y(1)) = (${fmt(P.x)}, ${fmt(P.y)}) ; h′(1) ≈ ${fmt(v)}`]}})}}}
 };
-const CALC_KEYS=Object.keys(CALC);
+CALC.bestlim=CALC.limites;
+const CALC_ALIAS=['bestlim','normcalc'],CALC_KEYS=Object.keys(CALC).filter(k=>!CALC_ALIAS.includes(k));
 const hsh=s=>[...s].reduce((a,c)=>(a*31+c.charCodeAt(0))|0,7);
 const calcBuild=(kind,ex,vr)=>CALC[kind].g(rng(ex*7919+vr*104729+hsh(kind)),ex,vr);
 
@@ -1678,13 +1678,13 @@ function topicList(){
 function render(){
   const app=$('app');
   if(!S.user)S.v='home';
-  if(S.y!==null&&!yOK(S.y)){S.y=null;if(['dom','chap','cours','exos','annales','cartes','partiel','grille'].includes(S.v))S.v='home'}
-  if(['dom','chap','cours','exos','annales','cartes','partiel','grille'].includes(S.v)&&S.y===null)S.v='home';
-  if(['chap','cours','exos','annales','cartes'].includes(S.v)&&!(CHAPS[S.d]&&CHAPS[S.d][S.ch]))S.v='dom';
+  if(S.y!==null&&!yOK(S.y)){S.y=null;if(['dom','chap','cours','exos','annales','cartes','feuilles','partiel','grille'].includes(S.v))S.v='home'}
+  if(['dom','chap','cours','exos','annales','cartes','feuilles','partiel','grille'].includes(S.v)&&S.y===null)S.v='home';
+  if(['chap','cours','exos','annales','cartes','feuilles'].includes(S.v)&&!(CHAPS[S.d]&&CHAPS[S.d][S.ch]))S.v='dom';
   app.className='d-'+S.d;
-  const inD=['dom','chap','cours','exos','annales','cartes','partiel'].includes(S.v),inC=['chap','cours','exos','annales','cartes'].includes(S.v);
+  const inD=['dom','chap','cours','exos','annales','cartes','feuilles','partiel'].includes(S.v),inC=['chap','cours','exos','annales','cartes','feuilles'].includes(S.v);
   app.dataset.k=S.v==='cours'?'cours':(S.v==='exos'||S.v==='partiel')?'exos':(S.v==='dom'||S.v==='chap')?'dom':'other';
-  $('path').textContent=['depot','compte','admin','classement'].includes(S.v)?'~/'+S.v+'$':S.v==='grille'?'~/a'+S.y+'/notes$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales','cartes'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+'$';
+  $('path').textContent=['depot','compte','admin','classement'].includes(S.v)?'~/'+S.v+'$':S.v==='grille'?'~/a'+S.y+'/notes$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales','cartes','feuilles'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+'$';
   $('nav').innerHTML=S.user?`<button class="${S.v==='home'?'on':''}" onclick="go('home')">Accueil${S.y!==null?' · '+YN[S.y]:''}</button>`
     +(S.y===null?[]:Object.keys(D)).map(k=>`<button class="dn d-${k}${inD&&S.d===k?' on':''}" onclick="go('dom','${k}')">${D[k]}</button>`).join('')
     +['classement','depot','compte','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}${k==='compte'&&nfU()?` <span class="badge">${nfU()}</span>`:''}</button>`).join(''):'';
@@ -1752,7 +1752,7 @@ async function enter(user){
     if(p.data.banni){await sb.auth.signOut();S.user=null;setRole('');S.loading=false;S.msg='Ce compte a été suspendu par un administrateur.';S.ko=true;return render()}
     S.prof={promo:p.data.promo||null,verif:!!p.data.promo_verifiee,cex:!!p.data.classement_exos,cre:!!p.data.classement_reel};S.G={};S.gp=null;S.cl.promo=S.prof.promo;
     S.pseudo=p.data.pseudo;setRole(p.data.role);await verifAdmin();await annLoad();
-    await loadData();await loadMine();loadNotifs();
+    await loadData();await feuillesLoad();await loadMine();loadNotifs();
   }catch(e){S.err=e.message||String(e)}
   S.loading=false;render();
 }
@@ -1910,7 +1910,7 @@ function typeEdit(){
   return `<div class="edb"><h4>Types d'exercices du chapitre</h4>
     ${T.map(x=>`<div class="edr"><label>Titre<input type="text" id="ty_t${x.id}" value="${esc(x.titre)}" maxlength="200"></label>
       <label>Nb d'exercices<input type="number" id="ty_n${x.id}" min="0" value="${x.nb_exercices||0}" style="width:100px"></label>
-      <button class="btn" onclick="typeSave('${x.id}')">Enregistrer</button>${x.generateur?`<span class="note" style="margin:0">générateur : ${esc(x.generateur)}</span>`:''}<span class="sp"></span>
+      <button class="btn" onclick="typeMove('${x.id}',-1)" title="Monter">↑</button><button class="btn" onclick="typeMove('${x.id}',1)" title="Descendre">↓</button><button class="btn" onclick="typeSave('${x.id}')">Enregistrer</button>${x.generateur?`<span class="note" style="margin:0">générateur : ${esc(x.generateur)}</span>`:''}<span class="sp"></span>
       ${delBtn('t'+x.id,"typeDelete('"+x.id+"')",'Supprimer')}</div>`).join('')||'<div class="note" style="margin:0">Aucun type pour le moment.</div>'}
     <div class="edr" style="border-top:1px solid var(--line);padding-top:12px"><label>Nouveau type<input type="text" id="nt_t" placeholder="Titre" maxlength="200"></label>
       <label>Nb d'exercices<input type="number" id="nt_n" min="0" value="0" style="width:100px"></label><button class="btn" onclick="typeAdd()">Ajouter</button></div></div>`;
@@ -2388,7 +2388,190 @@ async function annLoad(){
   S.ann=null;
   try{const r=await sb.rpc('mes_annees');S.ann=(r.error||!Array.isArray(r.data))?null:r.data.map(Number)}catch(e){S.ann=null}
 }
-const AT={depots:'Dépôts',comptes:'Comptes',promos:'Promos et accès',contenu:'Contenu',grilles:'Grilles de notes',notifs:'Notifications',cartes:'Cartes'};
+/* ===== Feuilles d'exos : évaluations composées par l'admin avec les générateurs ===== */
+const r2=v=>Math.round(v*100)/100;
+const fOf=cid=>(DB.fl||[]).filter(f=>f.chapitre_id===cid).sort((a,b)=>a.ordre-b.ordre);
+async function feuillesLoad(){
+  DB.fl=[];S.fn={};
+  try{
+    const r=await sb.from('feuilles').select('*').order('ordre');if(r.error)return;DB.fl=r.data||[];
+    const n=await sb.from('feuilles_notes').select('feuille_id,note,max,created_at').eq('user_id',S.user.id).order('created_at');
+    if(!n.error)(n.data||[]).forEach(x=>{const o=S.fn[x.feuille_id]=S.fn[x.feuille_id]||{best:0,max:x.max,n:0};o.n++;o.max=x.max;if(Number(x.note)>o.best)o.best=Number(x.note)});
+  }catch(e){}
+}
+function fBuild(f,seed){
+  return (f.entrees||[]).map((en,si)=>{
+    const blocks=[];
+    if(CALC[en.gen]){
+      let left=Math.max(1,en.n|0),b=0;
+      while(left>0&&b<30){
+        const E=calcBuild(en.gen,2+((seed*31+si*17+b*5)%9000),(seed+b)%9999),it=E.items.slice(0,left);
+        if(!it.length)break;blocks.push({E:Object.assign({},E,{items:it})});left-=it.length;b++;
+      }
+    }
+    return{en,blocks};
+  });
+}
+function fStart(id){
+  const f=(DB.fl||[]).find(x=>x.id===id);if(!f)return;
+  S.fe={w:'fe',id,seed:Math.floor(Math.random()*90000)+1,ans:{},res:{},done:false,note:0,max:0,det:null,saved:''};
+  S.fe.secs=fBuild(f,S.fe.seed);S.fd=null;render();
+}
+async function fSubmit(){
+  const P=S.fe,f=P&&(DB.fl||[]).find(x=>x.id===P.id);if(!f||P.done)return;
+  let got=0,pts=0;
+  P.det=P.secs.map((x,si)=>{let n=0,ok=0;
+    x.blocks.forEach((bl,bi)=>bl.E.items.forEach((it,i)=>{n+=it.fields.length;ok+=cxGrade(it,i,si+'.'+bi+'.',P)}));
+    const g=n?x.en.pts*ok/n:0;pts+=Number(x.en.pts);got+=g;
+    return{n:CALC[x.en.gen]?CALC[x.en.gen].n:x.en.gen,pts:Number(x.en.pts),ok,tot:n,got:g}});
+  const k=pts>0?Number(f.total)/pts:0;
+  P.det.forEach(d=>{d.pts=r2(d.pts*k);d.got=r2(d.got*k)});
+  P.note=r2(got*k);P.max=Number(f.total);P.done=true;P.saved='';render();
+  if(sb&&S.user&&!S.edit){
+    const r=await sb.from('feuilles_notes').insert({user_id:S.user.id,feuille_id:f.id,note:P.note,max:P.max,detail:P.det});
+    P.saved=r&&r.error?"Note non enregistrée dans ton compte.":'Note enregistrée dans ton compte.';
+    await feuillesLoad();render();
+  }
+}
+function fSheetHtml(){
+  const P=S.fe,f=DB.fl.find(x=>x.id===P.id);if(!f){S.fe=null;return ''}
+  const sp=(f.entrees||[]).reduce((a,e)=>a+Number(e.pts),0),kk=sp>0?Number(f.total)/sp:1;
+  const body=P.secs.map((x,si)=>{
+    const d=P.done&&P.det?P.det[si]:null;
+    return `<section class="panel" style="margin-top:14px"><h3>Exercice ${si+1} – ${esc(CALC[x.en.gen]?CALC[x.en.gen].n:x.en.gen)} (${f1(r2(x.en.pts*kk))} pt${x.en.pts*kk>1?'s':''})${d&&d.tot?` : ${f1(d.got)} / ${f1(d.pts)}`:''}</h3>`+
+      x.blocks.map((bl,bi)=>`<p class="note" style="margin:10px 0 0">${esc(bl.E.titre)} : ${mxs(bl.E.consigne)}</p>`+
+        bl.E.items.map((it,i)=>cxItemHtml(it,i,si+'.'+bi+'.',P,{train:0,lvl:3,noHints:1,sol:P.done,show:P.done})).join('')).join('')+`</section>`}).join('');
+  if(P.done)return `<div class="row"><button class="btn" onclick="S.fe=null;render()">‹ Feuilles</button></div><h1>${esc(f.titre)} : résultat</h1>
+    <section class="panel"><h3>Note : ${f1(P.note)} / ${f1(P.max)}</h3>
+    <ul class="q">${P.det.map((d,i)=>`<li><span>Exercice ${i+1} – ${esc(d.n)}</span><span class="badge">${f1(d.got)} / ${f1(d.pts)}</span></li>`).join('')}</ul>
+    ${P.saved?`<p class="note">${esc(P.saved)}</p>`:''}
+    <div class="row" style="margin-top:12px"><button class="btn" onclick="fStart('${f.id}')">Refaire avec un nouveau tirage</button></div></section>${body}`;
+  return `<div class="row"><button class="btn" onclick="S.fe=null;render()">‹ Feuilles</button></div><h1>${esc(f.titre)}</h1>
+    <p class="lead">${f.description?esc(f.description)+' ':''}Note sur ${f1(Number(f.total))}${f.duree_min?' · durée conseillée '+f.duree_min+' min':''}. Pas d'aide : réponds, puis rends ta copie.</p>${body}
+    <div class="row" style="margin-top:14px"><button class="btn" onclick="fSubmit()">Rendre la copie</button></div>`;
+}
+function feuillesView(){
+  const c=CHAP();
+  if(S.fe)return fSheetHtml();
+  const L=fOf(c.id).filter(f=>f.publie||ed());
+  return `<div class="row"><button class="btn" onclick="go('chap')">‹ ${c.n}</button></div>
+  <h1>Feuilles d'exos – ${c.n}</h1>
+  <p class="lead">Des évaluations composées avec les générateurs : tu réponds à tout, tu rends ta copie, la note est calculée automatiquement.</p>`+
+  (L.length?'<ul class="q">'+L.map((f,i)=>{const n=(S.fn||{})[f.id];
+    return `<li><span><button class="lnk" onclick="fStart('${f.id}')">${esc(f.titre)}</button> <span class="note" style="margin:0">${(f.entrees||[]).length} exo${(f.entrees||[]).length>1?'s':''} · /${f1(Number(f.total))}${f.publie?'':' · brouillon (invisible des membres)'}</span></span>
+    <span class="row" style="margin:0">${n?`<span class="badge">meilleure : ${f1(n.best)} / ${f1(Number(n.max))}</span>`:''}
+    ${ed()?`<button class="btn" onclick="fMove('${f.id}',-1)" title="Monter">↑</button><button class="btn" onclick="fMove('${f.id}',1)" title="Descendre">↓</button><button class="btn" onclick="fEdit('${f.id}')">Modifier</button>`:''}</span></li>`}).join('')+'</ul>'
+   :'<div class="empty">Aucune feuille pour le moment.</div>')+fEditor();
+}
+function fNew(){S.fd={id:null,titre:'',description:'',total:20,duree_min:'',publie:false,entrees:[]};render()}
+function fEdit(id){const f=DB.fl.find(x=>x.id===id);S.fd=Object.assign({},f,{entrees:(f.entrees||[]).map(e=>Object.assign({},e)),description:f.description||'',duree_min:f.duree_min||''});S.cfx=null;render()}
+const fdSet=(k,v)=>{S.fd[k]=v};
+const fdEn=(i,k,v)=>{S.fd.entrees[i][k]=Number(v)};
+function fdAdd(){const g=$('fd_g').value;if(!g)return;S.fd.entrees.push({gen:g,n:3,pts:4});render()}
+function fdMove(i,d){const E=S.fd.entrees,j=i+d;if(j<0||j>=E.length)return;[E[i],E[j]]=[E[j],E[i]];render()}
+function fdDel(i){S.fd.entrees.splice(i,1);render()}
+function fEditor(){
+  if(!ed())return '';
+  const d=S.fd,sum=d?d.entrees.reduce((a,e)=>a+(Number(e.pts)||0),0):0;
+  return `<div class="edb"><h4>Feuilles d'exos</h4><div class="edr"><button class="btn" onclick="fNew()">Nouvelle feuille</button></div>`+(d?`
+   <div class="edr"><label>Titre<input type="text" maxlength="200" value="${esc(d.titre)}" oninput="fdSet('titre',this.value)" style="min-width:280px"></label>
+    <label>Note totale<input type="number" min="1" step="0.5" value="${esc(d.total)}" oninput="fdSet('total',this.value)" style="width:90px"></label>
+    <label>Durée conseillée (min)<input type="number" min="1" value="${esc(d.duree_min)}" oninput="fdSet('duree_min',this.value)" style="width:90px"></label>
+    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" ${d.publie?'checked':''} onchange="fdSet('publie',this.checked)"> visible des membres</label></div>
+   <div class="edr"><label>Consigne (facultatif)<textarea maxlength="2000" oninput="fdSet('description',this.value)" style="min-height:50px">${esc(d.description)}</textarea></label></div>
+   <h4 style="margin-top:10px">Exercices de la feuille</h4>
+   ${d.entrees.map((e,i)=>`<div class="edr"><b>${i+1}.</b> <span style="min-width:200px">${esc(CALC[e.gen]?CALC[e.gen].n:e.gen+' (générateur introuvable)')}</span>
+     <label>Questions<input type="number" min="1" max="30" value="${e.n}" oninput="fdEn(${i},'n',this.value)" style="width:80px"></label>
+     <label>Points<input type="number" min="0.5" step="0.5" value="${e.pts}" oninput="fdEn(${i},'pts',this.value)" style="width:80px"></label>
+     <button class="btn" onclick="fdMove(${i},-1)" title="Monter">↑</button><button class="btn" onclick="fdMove(${i},1)" title="Descendre">↓</button><button class="btn" onclick="fdDel(${i})" title="Retirer">✕</button></div>`).join('')||'<div class="note" style="margin:0">Aucun exercice : ajoutes-en un ci-dessous.</div>'}
+   <div class="edr"><label>Ajouter un exercice<select id="fd_g"><option value="">— générateur —</option>${CALC_KEYS.map(k=>`<option value="${k}">${esc(CALC[k].n)}</option>`).join('')}</select></label><button class="btn" onclick="fdAdd()">Ajouter</button></div>
+   <p class="note">« Questions » = nombre de questions (par ex. de limites ou de calculs) tirées dans le générateur. Les points sont des poids : leur somme (${f1(sum)}) est ramenée à la note totale (${f1(Number(d.total)||0)}).</p>
+   <div class="edr"><button class="btn" onclick="fSave()">Enregistrer la feuille</button>${d.id?`<button class="btn" onclick="fStart('${d.id}')">Aperçu</button>`:''}<button class="btn" onclick="S.fd=null;render()">Fermer</button><span class="sp"></span>
+    ${d.id?delBtn('f'+d.id,"fDelete('"+d.id+"')",'Supprimer la feuille'):''}</div>`:'')+`</div>`;
+}
+async function fSave(){
+  const d=S.fd,titre=(d.titre||'').trim();
+  if(!titre)return flash('Donne un titre à la feuille.',1);
+  if(!d.entrees.length)return flash('Ajoute au moins un exercice.',1);
+  if(d.entrees.some(e=>!(e.n>=1)||!(e.pts>0)))return flash('Chaque exercice : au moins 1 question et des points > 0.',1);
+  const tot=Number(d.total);if(!(tot>0))return flash('Note totale invalide.',1);
+  const row={titre:titre.slice(0,200),description:(d.description||'').trim().slice(0,2000)||null,total:tot,duree_min:d.duree_min?Math.round(Number(d.duree_min)):null,publie:!!d.publie,
+    entrees:d.entrees.map(e=>({gen:e.gen,n:Math.round(e.n),pts:Number(e.pts)}))};
+  const r=d.id?await sb.from('feuilles').update(row).eq('id',d.id).select()
+    :await sb.from('feuilles').insert(Object.assign(row,{chapitre_id:CHAP().id,ordre:fOf(CHAP().id).length+1})).select();
+  if(refused(r))return flash(/relation|feuilles/i.test(refused(r))?"Table « feuilles » absente : lance maj-feuilles.sql dans Supabase.":refused(r),1);
+  S.fd=null;await feuillesLoad();flash('Feuille enregistrée.');
+}
+async function fDelete(id){
+  if(S.cfx!=='f'+id){S.cfx='f'+id;return render()}
+  S.cfx=null;const r=await sb.from('feuilles').delete().eq('id',id).select('id');
+  if(r.error)return flash(fr(r.error.message),1);
+  S.fd=null;await feuillesLoad();flash('Feuille supprimée (avec les notes associées).');
+}
+async function fMove(id,d){
+  const L=fOf(CHAP().id),i=L.findIndex(x=>x.id===id),j=i+d;if(i<0||j<0||j>=L.length)return;
+  [L[i],L[j]]=[L[j],L[i]];
+  const rs=await Promise.all(L.map((x,k)=>x.ordre===k+1?null:sb.from('feuilles').update({ordre:k+1}).eq('id',x.id).select()));
+  const bad=rs.find(r=>r&&refused(r));if(bad)return flash(refused(bad),1);
+  await feuillesLoad();render();
+}
+async function typeMove(id,d){
+  const T=CHAP().ty.slice(),i=T.findIndex(x=>x.id===id),j=i+d;if(i<0||j<0||j>=T.length)return;
+  [T[i],T[j]]=[T[j],T[i]];
+  const rs=await Promise.all(T.map((x,k)=>x.ordre===k+1?null:sb.from('types_exo').update({ordre:k+1}).eq('id',x.id).select()));
+  const bad=rs.find(r=>r&&refused(r));if(bad)return flash(refused(bad),1);
+  S.topic=null;await loadData();render();
+}
+/* ===== Admin : bibliothèque (où se trouve chaque contenu publié) ===== */
+async function admReplace(id,inp){
+  const f=inp.files[0];if(!f)return;const d=DB.docs.find(x=>x.id===id);
+  const mt=f.type||MT[ext(f.name)]||'';
+  if(!Object.values(MT).includes(mt))return flash('Seuls les PDF et images (JPEG, PNG, WebP) sont acceptés.',1);
+  if(f.size>20*1048576)return flash('Fichier de plus de 20 Mo.',1);
+  const path=S.user.id+'/'+uid()+'-'+clean(f.name);
+  const u=await sb.storage.from('documents').upload(path,f,{contentType:mt,upsert:false});
+  if(u.error)return flash(fr(u.error.message),1);
+  const r=await sb.from('documents').update({fichier_path:path}).eq('id',id).select();
+  if(refused(r)){await sb.storage.from('documents').remove([path]);return flash(refused(r),1)}
+  await sb.storage.from('documents').remove([d.fichier_path]);
+  S.pvId=null;await reloadDocs();flash('Fichier remplacé : même emplacement, nouvelle version.');
+}
+const bTog=(k,o)=>{(S.bo=S.bo||{})[k]=o};
+function admBiblio(){
+  const docs=DB.docs.filter(d=>d.statut==='publie'),fl=DB.fl||[];
+  const op=k=>(S.bo||{})[k]?' open':'';
+  const det=(k,sum,inner,cls)=>`<details class="${cls||''}"${op(k)} ontoggle="bTog('${k}',this.open)" style="margin:6px 0 6px 14px"><summary>${sum}</summary>${inner}</details>`;
+  const docRow=d=>`<li style="flex-wrap:wrap"><span>${esc(d.titre)} <span class="note" style="margin:0">${d.annee?d.annee+' · ':''}déposé le ${new Date(d.created_at).toLocaleDateString('fr-FR')}</span></span>
+    <span class="row" style="margin:0"><button class="btn" onclick="${S.pvId===d.id?"showPv(null)":`showPv('${d.id}')`}">${S.pvId===d.id?'Masquer':'Voir'}</button>
+    <label class="btn" style="cursor:pointer">Remplacer le fichier<input type="file" accept=".pdf,image/*" hidden onchange="admReplace('${d.id}',this)"></label>
+    <button class="btn danger${S.cfd===d.id?' go':''}" onclick="admDelete('${d.id}')">${S.cfd===d.id?'Confirmer : supprimer':'Supprimer'}</button>${S.cfd===d.id?`<button class="btn" onclick="S.cfd=null;render()">Annuler</button>`:''}</span>
+    ${S.pvId===d.id?`<div style="width:100%">${pvHtml(d)}</div>`:''}</li>`;
+  const chBlock=(c,pre)=>{
+    const cd=docs.filter(d=>d.chapitre_id===c.id),cf=fl.filter(f=>f.chapitre_id===c.id).sort((a,b)=>a.ordre-b.ordre);
+    const parts=Object.keys(TY).map(t=>{const x=cd.filter(d=>d.type===t);return x.length?`<h4 style="margin:8px 0 2px;font-size:13px">${TY[t]} (${x.length})</h4><ul class="q">${x.map(docRow).join('')}</ul>`:''}).join('')
+     +(cf.length?`<h4 style="margin:8px 0 2px;font-size:13px">Feuilles d'exos (${cf.length})</h4><ul class="q">${cf.map(f=>`<li><span>${esc(f.titre)} <span class="note" style="margin:0">${f.publie?'visible':'brouillon'} · ${(f.entrees||[]).length} exo(s)</span></span>
+        <span class="row" style="margin:0"><button class="btn danger${S.cfx==='f'+f.id?' go':''}" onclick="fDelete('${f.id}')">${S.cfx==='f'+f.id?'Confirmer : supprimer':'Supprimer'}</button></span></li>`).join('')}</ul>`:'');
+    return det(pre+c.id,`${c.n} <span class="badge">${cd.length} doc${cd.length>1?'s':''}${cf.length?' · '+cf.length+' feuille'+(cf.length>1?'s':''):''}</span>`,parts||'<div class="note" style="margin:4px 0">Rien de publié ici.</div>');
+  };
+  let used=new Set(),html='';
+  [1,2,3,4,5].forEach(an=>{
+    const inner=Object.keys(D).map(m=>{
+      const mods=MODS.filter(x=>x.matiere===m&&x.an===an).sort((a,b)=>a.num-b.num),chs=CHAPS[m]||[];
+      const blocks=mods.map(md=>{const cs=chs.filter(c=>c.mid===md.id);cs.forEach(c=>used.add(c.id));
+        return cs.length?det('m'+md.id,`Module ${md.num}${md.raw?' · '+esc(md.raw):''} <span class="note" style="margin:0">promo ${md.pr}</span>`,cs.map(c=>chBlock(c,'c')).join('')):''}).join('');
+      const orph=chs.filter(c=>c.an===an&&!c.mid&&!used.has(c.id));orph.forEach(c=>used.add(c.id));
+      const body=blocks+(orph.length?det('o'+m+an,'Autres chapitres',orph.map(c=>chBlock(c,'c')).join('')):'');
+      return body?det('y'+an+m,D[m],body):'';
+    }).join('');
+    if(inner)html+=det('a'+an,`<b>${YN[an]}</b>`,inner);
+  });
+  const lost=docs.filter(d=>!d.chapitre_id||!(Object.values(CHAPS).flat().some(c=>c.id===d.chapitre_id)));
+  const lostHtml=lost.length?det('lost','<b>Sans chapitre</b> <span class="badge">'+lost.length+'</span>',`<ul class="q">${lost.map(docRow).join('')}</ul>`):'';
+  return `<p class="lead">Où se trouve chaque contenu publié, rangé comme sur le site : année › matière › module › chapitre › type. Tu peux le consulter, remplacer son fichier par une nouvelle version, ou le supprimer.</p>
+   <section class="panel"><h3>Contenus publiés (${docs.length} document${docs.length>1?'s':''}, ${fl.length} feuille${fl.length>1?'s':''})</h3>${html||'<div class="empty">Rien de publié.</div>'}${lostHtml}</section>`;
+}
+
+const AT={depots:'Dépôts',biblio:'Bibliothèque',comptes:'Comptes',promos:'Promos et accès',contenu:'Contenu',grilles:'Grilles de notes',notifs:'Notifications',cartes:'Cartes'};
 /* ===== Cartes (Excalidraw) : cartes mentales privées, propositions, cartes de l'admin ===== */
 const XC_V='0.17.6',XC_CDN='https://cdn.jsdelivr.net/npm/',XE={};
 let XCP=null;
@@ -2794,7 +2977,7 @@ function admGrilles(){
     <button class="btn" onclick="S.gp=Number($('ggp').value);S.y=Number($('gga').value);S.edit=true;go('grille')">Ouvrir la grille</button></div></section>`;
 }
 function admHtml(){
-  const body={depots:admDepots,comptes:admUsers,promos:admPromos,contenu:admContenu,grilles:admGrilles,notifs:admNotifs,cartes:admCartes}[S.at||'depots']();
+  const body={depots:admDepots,comptes:admUsers,promos:admPromos,contenu:admContenu,grilles:admGrilles,notifs:admNotifs,cartes:admCartes,biblio:admBiblio}[S.at||'depots']();
   return `<h1>Admin</h1>${admTabs()}${body}`;
 }
 
