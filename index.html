@@ -242,6 +242,9 @@ const views={
       ${up?`<input type="text" id="lu" value="${esc(f.u||'')}" placeholder="Pseudo" aria-label="Pseudo">
       <input type="number" id="lr" value="${esc(f.r||'')}" placeholder="Promo : année d'entrée à l'école (ex. 2025)" aria-label="Promo" min="2000" max="2100">
       <input type="text" id="lc" value="${esc(f.c||'')}" placeholder="Code d'invitation" aria-label="Code d'invitation">`:''}
+      <label class="note" style="display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox" id="lm"${mailOff()?'':' checked'}> Se souvenir de mon e-mail</label>
+      ${up?'':`<label class="note" style="display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox" id="lk"${keepOn()?' checked':''}> Rester connecté sur cet appareil <span style="opacity:.7">(à éviter sur un ordinateur partagé)</span></label>`}
+      ${TS_KEY?'<div id="cft" style="min-height:65px"></div>':''}
       <div class="row" style="margin:0"><button class="btn" onclick="login()">${up?"S'inscrire":'Se connecter'}</button>
       <button class="btn" onclick="S.mode='${up?'in':'up'}';S.msg='';render()">${up?"J'ai déjà un compte":'Créer un compte'}</button></div>
     </div></section>`;
@@ -1695,11 +1698,20 @@ function render(){
   else if(S.err)html=`<section class="panel"><p class="bad">Impossible de charger les données : ${esc(S.err)}</p><div class="row"><button class="btn" onclick="enter(S.user)">Réessayer</button></div></section>`;
   else html=views[S.v]();
   $('view').innerHTML=(vmOn()?`<p class="note" role="status" style="margin:0 0 12px;border:1px dashed var(--line);padding:8px 12px">Vue membre : tu vois le site comme un membre (affichage seulement, tes droits restent ceux d'admin). <button class="btn" onclick="toggleVM()">Revenir en admin</button></p>`:'')+(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html+gModal();
-  bindNotes();bindGen();ptBind();dvBind();dcBind();sfBind();mathRender();
+  bindNotes();bindGen();ptBind();dvBind();dcBind();sfBind();cfBind();mathRender();
 }
 /* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
 const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y4tkgIlrNoHjjsRSw_DjjA_NrBmdQfr';
-const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY):null;
+/* Session : par défaut elle disparaît à la fermeture de l'onglet ; « Rester connecté » la garde sur l'appareil */
+const TS_KEY='';/* clé de SITE Cloudflare Turnstile (publique). Vide = pas de captcha. */
+const KEEP='ros_keep',keepOn=()=>{try{return localStorage.getItem(KEEP)==='1'}catch(e){return false}};
+const sstore={
+  getItem:k=>{try{const a=sessionStorage.getItem(k);return a!==null?a:localStorage.getItem(k)}catch(e){return null}},
+  setItem:(k,v)=>{try{if(keepOn()){localStorage.setItem(k,v);sessionStorage.removeItem(k)}else{sessionStorage.setItem(k,v);localStorage.removeItem(k)}}catch(e){}},
+  removeItem:k=>{try{sessionStorage.removeItem(k);localStorage.removeItem(k)}catch(e){}}
+};
+const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY,{auth:{storage:sstore}}):null;
+try{const m=localStorage.getItem('ros_mail');if(m&&!S.f)S.f={e:m}}catch(e){}
 const DB={intro:''};
 const ed=()=>S.edit&&S.role==='admin';
 const fr=m=>/banned/i.test(m)?'Ce compte a été suspendu par un administrateur.':/invalid login/i.test(m)?'E-mail ou mot de passe incorrect.'
@@ -1744,6 +1756,29 @@ async function enter(user){
   }catch(e){S.err=e.message||String(e)}
   S.loading=false;render();
 }
+const mailOff=()=>{try{return localStorage.getItem('ros_mailoff')==='1'}catch(e){return false}};
+/* Captcha Cloudflare Turnstile */
+let CFID=null,CFL=null;
+function cfBind(){
+  const el=$('cft');if(!TS_KEY||!el||S.user)return;
+  const go_=()=>{
+    const e2=$('cft');if(!e2||!window.turnstile)return;
+    try{if(CFID!==null)window.turnstile.remove(CFID)}catch(e){}
+    S.cfTok='';
+    CFID=window.turnstile.render(e2,{sitekey:TS_KEY,theme:'dark',language:'fr',callback:t=>{S.cfTok=t},'expired-callback':()=>{S.cfTok=''},'error-callback':()=>{S.cfTok=''}});
+  };
+  if(window.turnstile)return go_();
+  if(!CFL){CFL=new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';sc.async=true;sc.onload=ok;sc.onerror=()=>{CFL=null;ko()};document.head.appendChild(sc)})}
+  CFL.then(go_).catch(()=>{S.msg="Vérification anti-robot indisponible : recharge la page.";S.ko=true})
+}
+/* Déconnexion après 30 min d'inactivité (sauf « Rester connecté ») */
+const IDLE_MS=30*60*1000;let lastAct=Date.now();
+['pointerdown','keydown','wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{lastAct=Date.now()},{passive:true,capture:true}));
+setInterval(async()=>{
+  if(!S.user||keepOn()||Date.now()-lastAct<IDLE_MS)return;
+  try{if(typeof xcSave==='function'&&XE.id)await xcSave()}catch(e){}
+  await logout();S.msg='Tu as été déconnecté après 30 minutes d\'inactivité.';S.ko=false;render();
+},30000);
 async function login(){
   const up=S.mode==='up',v=id=>($(id)?$(id).value:'').trim();
   S.f={e:v('le'),u:v('lu'),c:v('lc'),r:v('lr')};
@@ -1751,8 +1786,14 @@ async function login(){
   if(up&&!(Number.isInteger(Number(S.f.r))&&Number(S.f.r)>=2000&&Number(S.f.r)<=2100))return flash("Indique ta promo : l'année d'entrée à l'école (ex. 2025).",1);
   if(!S.f.e||!pw)return flash('Entre ton e-mail et ton mot de passe.',1);
   if(up&&!/@student\.junia\.com$/i.test(S.f.e))return flash("Utilise ton adresse de l'école (…@student.junia.com).",1);
-  const r=up?await sb.auth.signUp({email:S.f.e,password:pw,options:{data:Object.assign({code:S.f.c,promo:S.f.r},S.f.u?{pseudo:S.f.u}:{})}})
-            :await sb.auth.signInWithPassword({email:S.f.e,password:pw});
+  if(TS_KEY&&!S.cfTok)return flash("Coche la vérification anti-robot avant de continuer.",1);
+  const tok=TS_KEY?{captchaToken:S.cfTok}:{};S.cfTok='';
+  try{
+    if(!up)localStorage.setItem(KEEP,($('lk')&&$('lk').checked)?'1':'0');
+    if($('lm')&&$('lm').checked){localStorage.setItem('ros_mail',S.f.e);localStorage.removeItem('ros_mailoff')}else{localStorage.removeItem('ros_mail');localStorage.setItem('ros_mailoff','1')}
+  }catch(e){}
+  const r=up?await sb.auth.signUp({email:S.f.e,password:pw,options:Object.assign({data:Object.assign({code:S.f.c,promo:S.f.r},S.f.u?{pseudo:S.f.u}:{})},tok)})
+            :await sb.auth.signInWithPassword({email:S.f.e,password:pw,options:tok});
   if(r.error)return flash(fr(r.error.message),1);
   if(!r.data.session)return flash('Compte créé : confirme ton e-mail, puis connecte-toi.');
   S.msg='';await enter(r.data.user);
