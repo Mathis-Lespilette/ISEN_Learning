@@ -1703,7 +1703,7 @@ function render(){
 /* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
 const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y4tkgIlrNoHjjsRSw_DjjA_NrBmdQfr';
 /* Session : par défaut elle disparaît à la fermeture de l'onglet ; « Rester connecté » la garde sur l'appareil */
-const TS_KEY='';/* clé de SITE Cloudflare Turnstile (publique). Vide = pas de captcha. */
+const TS_KEY='0x4AAAAAAFVh3oMDK_RsqIfv';/* clé de SITE Cloudflare Turnstile (publique). Vide = pas de captcha. */
 const KEEP='ros_keep',keepOn=()=>{try{return localStorage.getItem(KEEP)==='1'}catch(e){return false}};
 const sstore={
   getItem:k=>{try{const a=sessionStorage.getItem(k);return a!==null?a:localStorage.getItem(k)}catch(e){return null}},
