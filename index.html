@@ -897,6 +897,82 @@ const CALC={
      fields:[{id:'h',t:'num',label:'h′(1) =',ans:v}],
      sol:[`${TL(PX,d.fx)}, ${TL(PY,d.fy)}`,`${TL("x'(t)",c.dx)}, ${TL("y'(t)",c.dy)}`,`(x(1), y(1)) = (${fmt(P.x)}, ${fmt(P.y)}) ; h′(1) ≈ ${fmt(v)}`]}})}}}
 };
+/* ===== TD « fonctions de plusieurs variables 2 » : gradient, différentielles, continuité et dérivées partielles ===== */
+const cof=c=>c===1?'':c+'*';
+CALC.gradient={n:'Utilisation du gradient',g(r,ex){
+  let al=1,be=1,a=2,b=4,k=0,dx=-1,dy=-1;
+  if(ex!==1){al=ri(r,1,2);be=ri(r,1,2);a=ri(r,1,3);b=ri(r,2,4);k=ri(r,0,2);dx=[-2,-1,1,2][ri(r,0,3)];dy=[-2,-1,1,2][ri(r,0,3)]}
+  const x0=a+dx,y0=b+dy,z0=al*dx*dx+be*dy*dy+k,gx=2*al*dx,gy=2*be*dy,nr=Math.hypot(gx,gy),ux=gx/nr,uy=gy/nr,
+   fs=`${cof(al)}(x-${a})^2+${cof(be)}(y-${b})^2`+(k?`+${k}`:''),fn=mparse(fs,XY),est=z0+nr,real=fn({x:x0+ux,y:y0+uy}),
+   fx=`${2*al}*(x-${a})`,fy=`${2*be}*(y-${b})`,plan=`${z0}+(${gx})*(x-${x0})+(${gy})*(y-${y0})`,
+   nrs=Number.isInteger(nr*nr)&&Number.isInteger(nr)?String(nr):`sqrt(${gx*gx+gy*gy})`;
+  const sq=(v)=>fmt(v);
+  return{titre:'Utilisation du gradient',consigne:`Dans tout l'exercice, on s'intéresse à la fonction ${F(fs)}. §Les réponses numériques peuvent s'écrire avec sqrt (ex : sqrt(2), 1/sqrt(2)) ou en décimal.`,
+   items:[
+   {q:`Justifier que f est différentiable et calculer sa différentielle.`,
+    hints:["f est un polynôme : ses dérivées partielles existent et sont continues sur ℝ², donc f est de classe C¹.","Une fonction C¹ est différentiable : df = ∂f/∂x dx + ∂f/∂y dy.","Dérive par rapport à x (y constante), puis par rapport à y."],
+    fields:[{id:'j',t:'choice',label:'f est différentiable sur ℝ² car :',opts:['f est de classe C¹ sur ℝ²','f est seulement continue','f est bornée'],ans:'f est de classe C¹ sur ℝ²'},
+     {id:'x',t:'expr',vars:XY,label:'∂f/∂x =',fn:mparse(fx,XY)},{id:'y',t:'expr',vars:XY,label:'∂f/∂y =',fn:mparse(fy,XY)}],
+    sol:['f est polynomiale, donc C¹ sur ℝ² : elle est différentiable en tout point.',`${TL(PX,fx)} ; ${TL(PY,fy)}`,'df(a,b)(dx, dy) = ∂f/∂x(a,b)·dx + ∂f/∂y(a,b)·dy.']},
+   {q:`Donner l'équation du plan tangent à la surface représentative de f au point (${x0}, ${y0}, ${z0}).`,
+    surf:{a,b,al,be,k,x0,y0,z0,gx,gy},
+    hints:["Plan tangent en (a, b) : z = f(a,b) + df_(a,b)(x − a, y − b).","Calcule d'abord ∂f/∂x et ∂f/∂y au point (a, b) = ("+x0+", "+y0+")."],
+    fields:[{id:'z',t:'expr',vars:XY,label:'plan tangent z =',fn:v=>z0+gx*(v.x-x0)+gy*(v.y-y0)}],
+    sol:[`∂f/∂x(${x0}, ${y0}) = ${gx} et ∂f/∂y(${x0}, ${y0}) = ${gy}.`,`${TL('z',plan)}`]},
+   {q:`Préciser la direction à prendre et le sens à suivre pour aller là où ça monte le plus depuis le point (${x0}, ${y0}).`,
+    hints:["C'est le gradient ∇f = (∂f/∂x, ∂f/∂y) évalué au point qui donne la direction et le sens de plus forte montée.","Normalise : le vecteur unitaire est ∇f / ‖∇f‖₂ (norme deux)."],
+    fields:[{id:'gx',t:'num',label:'composante en x de ∇f =',ans:gx},{id:'gy',t:'num',label:'composante en y de ∇f =',ans:gy},{id:'n',t:'num',label:'‖∇f‖₂ =',ans:nr},
+     {id:'ux',t:'num',label:'vecteur unitaire de montée, composante en x =',ans:ux},{id:'uy',t:'num',label:'vecteur unitaire de montée, composante en y =',ans:uy}],
+    sol:[`∇f(${x0}, ${y0}) = (${gx}, ${gy}).`,`‖∇f‖₂ = ${nrs} ≈ ${sq(nr)}.`,`Direction unitaire : ∇f/‖∇f‖₂ ≈ (${sq(ux)}, ${sq(uy)}).`]},
+   {q:`On se déplace de +1 (en norme deux) depuis (${x0}, ${y0}) dans cette direction. Comparer la valeur estimée par l'approximation linéaire de f à la valeur réelle de f.`,
+    hints:["Approximation linéaire : f(P + u) ≈ f(P) + ∇f(P)·u. Avec u = ∇f/‖∇f‖₂ on trouve f(P) + ‖∇f(P)‖₂.","Valeur réelle : évalue f en (x₀ + u₁, y₀ + u₂) avec u le vecteur unitaire de montée."],
+    fields:[{id:'e',t:'num',label:'valeur estimée f(P) + ‖∇f(P)‖₂ =',ans:est},{id:'r',t:'num',label:'valeur réelle f(P + u) =',ans:real},{id:'d',t:'num',label:'écart (réelle − estimée) =',ans:real-est}],
+    sol:[`Estimée : f(P) + ‖∇f(P)‖₂ = ${z0} + ${nrs} ≈ ${sq(est)}.`,`Réelle : f(P + u) ≈ ${sq(real)}.`,`Écart ≈ ${sq(real-est)} : c'est le terme d'ordre 2 (ici ${al===be?(al===1?'':al+' ')+'‖u‖₂² = '+al:al+' u₁² + '+be+' u₂²'}) que l'approximation linéaire ignore.`]}
+   ]};
+}};
+const DFP=[0,1,2,3,6,7,9];
+const DFTEX=(fx,fy)=>{try{return `\\(df=\\left(${mtex(fx)}\\right)dx+\\left(${mtex(fy)}\\right)dy\\)`}catch(e){return 'df = ('+pr(fx)+') dx + ('+pr(fy)+') dy'}};
+CALC.diffcalc={n:'Calcul de différentielles',g(r){
+  const L='abcd',ids=pickN(r,DFP.length,4).map(i=>DFP[i]);
+  const rc=['df = ∂f/∂x(a,b)·dx + ∂f/∂y(a,b)·dy','df = ∂f/∂x(a,b)·dy + ∂f/∂y(a,b)·dx','df = ∂f/∂x(a,b) + ∂f/∂y(a,b)','df = ∂²f/∂x²(a,b)·dx + ∂²f/∂y²(a,b)·dy'];
+  const opts=pickN(r,4,4).map(i=>rc[i]);
+  return{titre:'Calcul de différentielles',consigne:"Les fonctions considérées sont de classe C¹ sur ℝ².",items:[
+   {q:"Rappeler l'expression de la différentielle d'une fonction f ∈ C¹(ℝ², ℝ) en un point (a, b).",
+    hints:["La différentielle est la partie linéaire du développement limité à l'ordre 1 : elle est construite avec les dérivées partielles premières.","Les variables sont dx et dy (les accroissements depuis a et b)."],
+    fields:[{id:'r',t:'choice',label:'différentielle :',opts,ans:rc[0]}],
+    sol:["df(a,b)(dx,dy) = ∂f/∂x(a,b)·dx + ∂f/∂y(a,b)·dy, où dx et dy sont les accroissements à partir de a et b."]},
+   ...ids.map((k,j)=>{const d=DT[k](r);
+    return{q:`(${L[j]}) ${F(d.f)}. Justifier que f est différentiable et calculer sa différentielle.`,
+     hints:["Les fonctions usuelles (polynômes, exp, sin, cos, ln(1 + ·)) composées entre elles sont C¹ sur ℝ² : f est donc différentiable.","Calcule ∂f/∂x (y constante) puis ∂f/∂y (x constante).","df = ∂f/∂x dx + ∂f/∂y dy."],
+     fields:[{id:'j',t:'choice',label:'f est différentiable sur ℝ² car :',opts:['f est de classe C¹ sur ℝ²','f est continue en un point','f a des dérivées partielles en (0,0)'],ans:'f est de classe C¹ sur ℝ²'},
+      {id:'x',t:'expr',vars:XY,label:'coefficient de dx : ∂f/∂x =',fn:mparse(d.fx,XY)},{id:'y',t:'expr',vars:XY,label:'coefficient de dy : ∂f/∂y =',fn:mparse(d.fy,XY)}],
+     sol:['Les dérivées partielles existent et sont continues sur ℝ² : f est C¹, donc différentiable.',DFTEX(d.fx,d.fy)]}})]};
+}};
+const CD=[
+ {f:c=>`${cof(c)}x*y/(x^2+y^2)`,px:()=>0,py:()=>0,pa:c=>c/2,pt:c=>`${c}/2`,ct:0,s:'f(x,0) = 0 et f(0,y) = 0 : les dérivées partielles existent en (0,0) et valent 0.'},
+ {f:c=>`${cof(c)}x^2*y/(x^2+y^2)`,px:()=>0,py:()=>0,pa:()=>0,pt:()=>'0',ct:1,s:'f(x,0) = 0 et f(0,y) = 0 : les dérivées partielles en (0,0) existent et valent 0. De plus |f(x,y)| ≤ c|y| car x² ≤ x² + y² : f tend vers 0.'},
+ {f:c=>`${cof(c)}x*y/sqrt(x^2+y^2)`,px:()=>0,py:()=>0,pa:()=>0,pt:()=>'0',ct:1,s:'f(x,0) = 0 et f(0,y) = 0 : les dérivées partielles existent et valent 0. De plus |xy| ≤ (x² + y²)/2, donc |f| ≤ c·√(x² + y²)/2 → 0.'},
+ {f:c=>`${cof(c)}sqrt(x^2+y^2)`,px:()=>null,py:()=>null,pa:()=>0,pt:()=>'0',ct:1,s:'f(x,0) = c|x| et f(0,y) = c|y| : la valeur absolue n\'est pas dérivable en 0, donc aucune dérivée partielle n\'existe en (0,0). En revanche f(x,y) → 0 : f est continue.'},
+ {f:c=>`${cof(c)}x^2/sqrt(x^2+y^2)`,px:()=>null,py:()=>0,pa:()=>0,pt:()=>'0',ct:1,s:'f(x,0) = c|x| n\'est pas dérivable en 0 (pas de ∂f/∂x), alors que f(0,y) = 0 donne ∂f/∂y(0,0) = 0. De plus |f| ≤ c·√(x² + y²) → 0 : f est continue.'},
+ {f:c=>`${cof(c)}y/sqrt(x^2+y^2)`,px:()=>0,py:()=>null,pa:c=>c*Math.SQRT1_2,pt:c=>`${c}*sqrt(2)/2`,ct:0,s:'f(x,0) = 0 donne ∂f/∂x(0,0) = 0, mais f(0,y) = c·y/|y| vaut ±c : pas de dérivée en 0 selon y. Sur y = x (x > 0), f(x,x) = c/√2 ≠ 0 : f n\'est pas continue.'},
+ {f:c=>`${cof(c)}x^2/(x^2+y^2)`,px:()=>null,py:()=>0,pa:c=>c/2,pt:c=>`${c}/2`,ct:0,s:'f(x,0) = c pour x ≠ 0 alors que f(0,0) = 0 : pas de dérivée selon x (le taux c/x diverge), alors que f(0,y) = 0 donne ∂f/∂y(0,0) = 0. Sur y = x, f(x,x) = c/2 ≠ 0 : f n\'est pas continue.'},
+ {f:c=>`${cof(c)}x^3/(x^2+y^2)`,px:c=>c,py:()=>0,pa:()=>0,pt:()=>'0',ct:1,s:'f(x,0) = c·x donne ∂f/∂x(0,0) = c ; f(0,y) = 0 donne ∂f/∂y(0,0) = 0. De plus |f| ≤ c|x| → 0 : f est continue.'}
+];
+CALC.contderiv={n:'Continuité et dérivées partielles',g(r,ex){
+  const d=CD[ex===1?0:ri(r,0,CD.length-1)],c=ex===1?1:ri(r,1,3),fs=d.f(c),px=d.px(c),py=d.py(c),pa=d.pa(c);
+  const sol=(t)=>d.s.replace(/\bc\b/g,String(c)).replace(/\b1·/g,'').replace(/\b1\|/g,'|');
+  return{titre:'Continuité et dérivées partielles',consigne:`On considère f : ℝ² → ℝ définie par f(x, y) = ${TX(fs)} si (x, y) ≠ (0, 0), et f(0, 0) = 0. §Pour une valeur numérique, écris un nombre ; sinon écris « n'existe pas ».`,
+   items:[
+   {q:"Vérifier si f admet des dérivées partielles en (0, 0).",
+    hints:["Utilise la définition : ∂f/∂x(0,0) = lim de (f(h,0) − f(0,0))/h quand h → 0, et de même pour y.","Calcule f(x,0) et f(0,y) : ce sont des fonctions d'une seule variable.","Attention aux valeurs absolues : √(h²) = |h| n'est pas dérivable en 0."],
+    fields:[{id:'x',t:'lim',label:'∂f/∂x(0,0) =',ans:px},{id:'y',t:'lim',label:'∂f/∂y(0,0) =',ans:py}],
+    sol:[sol()]},
+   {q:"Étudier la continuité de f en (0, 0).",
+    hints:["Teste un chemin : calcule f(x, x) pour x > 0 et regarde vers quoi tend la valeur.","Si la limite le long d'un chemin n'est pas 0 = f(0,0), f n'est pas continue. Sinon, majore |f| (par exemple avec |xy| ≤ (x² + y²)/2).","Rappel : l'existence des dérivées partielles n'assure que la continuité selon les axes."],
+    fields:[{id:'p',t:'num',label:'limite de f(x, x) quand x → 0⁺ =',ans:pa},{id:'c',t:'choice',label:'f est-elle continue en (0,0) ?',opts:OUI,ans:d.ct?'oui':'non'}],
+    sol:[`Sur le chemin y = x (x > 0) : f(x, x) tend vers ${d.pt(c)}.`,d.ct?'Cette limite vaut 0 et une majoration prouve que f(x,y) → 0 : f est continue en (0,0).':'Cette limite n\'est pas 0 = f(0,0) : f n\'est pas continue en (0,0).','Moralité : des dérivées partielles en un point ne suffisent pas à assurer la continuité tout autour du point.']}
+   ]};
+}};
 CALC.bestlim=CALC.limites;
 const CALC_ALIAS=['bestlim','normcalc'],CALC_KEYS=Object.keys(CALC).filter(k=>!CALC_ALIAS.includes(k));
 const hsh=s=>[...s].reduce((a,c)=>(a*31+c.charCodeAt(0))|0,7);
@@ -1027,6 +1103,7 @@ function cxItemHtml(it,i,pre,st,o){
   const hints=o.lvl===0?`<ul class="note">${it.hints.map(h=>`<li>${esc(mx(h))}</li>`).join('')}</ul>`
     :o.lvl===1?`<details><summary>Afficher l'indice</summary>${esc(mx(it.hints[0]))}</details>`:'';
   return `<div class="cxi"><p class="mq">${mx(it.q)}</p>
+   ${it.surf&&o.train&&o.lvl===0?`<figure class="sfc" style="margin:8px 0"><canvas class="xsf" style="max-width:420px;display:block;touch-action:none" data-i="${i}" width="380" height="380" role="img" aria-label="Surface représentative de f avec son plan tangent"></canvas><figcaption>Surface représentative de f (glisse pour tourner) : le point rouge est le point de tangence, le plan blanc est le plan tangent.</figcaption></figure>`:''}
    ${it.fields.map((f,j)=>cxFieldHtml(f,ids[j],st,shown)).join('')}
    ${o.train&&it.fields.length?`<div class="row" style="margin:6px 0 0"><button class="btn" onclick="cxCheck('${st.w}','${pre}',${i})">Vérifier</button></div>`:''}
    ${o.noHints?'':hints}
@@ -1099,10 +1176,27 @@ function sfSurf(cv,sp,az,el){
   c.fillStyle='#222';c.font='12px sans-serif';c.textAlign='center';c.textBaseline='middle';
   const xe=rr[0]>0?1:-1,yf=-yb;
   tk.forEach((t,i)=>{
-    const v=String(sfTicks(h)[i]).replace('-','−'),px=P(t,yf,zb),py=P(xe,t,zb);
-    c.fillText(v+(v==='0'?'.0':v.includes('.')?'':'.0'),px[0],px[1]+13);c.textAlign='left';c.fillText(v+(v==='0'?'.0':v.includes('.')?'':'.0'),py[0]+8,py[1]+5);c.textAlign='center'});
+    const lab=u=>{const v=String(u).replace('-','−');return v+(v==='0'?'.0':v.includes('.')?'':'.0')},tv=sfTicks(h)[i],px=P(t,yf,zb),py=P(xe,t,zb);
+    c.fillText(lab(tv+(sp.ox||0)),px[0],px[1]+13);c.textAlign='left';c.fillText(lab(tv+(sp.oy||0)),py[0]+8,py[1]+5);c.textAlign='center'});
   if(G.lo<0&&G.hi>0){const pz=P(xe,yb,-zc/zr*ZH);c.textAlign='left';c.fillText('0',pz[0]+8,pz[1])}
   c.font='italic 13px serif';const lx=P(0,yf,zb),ly=P(xe,0,zb);c.textAlign='center';c.fillText('x',lx[0],lx[1]+30);c.textAlign='left';c.fillText('y',ly[0]+30,ly[1]+14);
+  if(sp.mk){
+    const X=(sp.mk.x-(sp.ox||0))/h,Y=(sp.mk.y-(sp.oy||0))/h,zz=z=>(z-zc)/zr*ZH;
+    if(sp.pl){const d=.4*h,q=[[-d,-d],[d,-d],[d,d],[-d,d]].map(([u,v])=>P(X+u/h,Y+v/h,zz(sp.mk.z+sp.pl.gx*u+sp.pl.gy*v)));poly(q,'rgba(255,255,255,.6)','#000',1.3)}
+    const p=P(X,Y,zz(sp.mk.z));c.beginPath();c.arc(p[0],p[1],5,0,7);c.fillStyle='#e11';c.fill();c.strokeStyle='#fff';c.lineWidth=1.5;c.stroke();
+  }
+}
+function xsBind(){
+  const E=S.cx&&S.cx.E;if(!E)return;
+  document.querySelectorAll('canvas.xsf').forEach(cv=>{
+    const it=E.items[+cv.dataset.i],u=it&&it.surf;if(!u)return;
+    const sp=it.sp||(it.sp={f:(x,y)=>u.al*x*x+u.be*y*y+u.k,h:2.5,st:1,ox:u.a,oy:u.b,mk:{x:u.x0,y:u.y0,z:u.z0},pl:{gx:u.gx,gy:u.gy}});
+    const V=S.cx.v=S.cx.v||{az:-60,el:30};
+    sfSurf(cv,sp,V.az,V.el);let dn=null;
+    cv.onpointerdown=ev=>{dn=[ev.clientX,ev.clientY];try{cv.setPointerCapture(ev.pointerId)}catch(e){}};
+    cv.onpointermove=ev=>{if(!dn)return;V.az+=(ev.clientX-dn[0])*.6;V.el=Math.max(4,Math.min(88,V.el+(ev.clientY-dn[1])*.4));dn=[ev.clientX,ev.clientY];sfSurf(cv,sp,V.az,V.el)};
+    cv.onpointerup=cv.onpointercancel=()=>{dn=null};
+  });
 }
 function sfLevels(sp,K){
   let st=sp.st,L;
@@ -1188,7 +1282,7 @@ function calcView(kind,quiet){
 
 /* ===== Entraînement au Partiel : barème du prof (8 + 1 + 2 + 9 = 20) ===== */
 const PT_SECS=[
- {n:'Calcul différentiel : questions type interro',pts:8,gens:['dpartielles','differentielle','limites','domaine','normes','niveau','topologie','chaine'],nb:3},
+ {n:'Calcul différentiel : questions type interro',pts:8,gens:['dpartielles','differentielle','limites','domaine','normes','niveau','topologie','chaine','gradient','diffcalc','contderiv'],nb:3},
  {n:'Optimisation',pts:1,gens:['optimisation'],nb:1},
  {n:'Continuité',pts:2,gens:['continuite'],nb:1},
  {n:'Chapitre 2 : intégrales multiples',pts:9,gens:['intsimples','intrect','intdomaine','ordre','polaires','aires','triples','barycentre','parametre'],nb:3}
@@ -1700,7 +1794,7 @@ function render(){
   else if(S.err)html=`<section class="panel"><p class="bad">Impossible de charger les données : ${esc(S.err)}</p><div class="row"><button class="btn" onclick="enter(S.user)">Réessayer</button></div></section>`;
   else html=views[S.v]();
   $('view').innerHTML=(vmOn()?`<p class="note" role="status" style="margin:0 0 12px;border:1px dashed var(--line);padding:8px 12px">Vue membre : tu vois le site comme un membre (affichage seulement, tes droits restent ceux d'admin). <button class="btn" onclick="toggleVM()">Revenir en admin</button></p>`:'')+(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html+gModal();
-  bindNotes();bindGen();ptBind();feBind();dvBind();dcBind();sfBind();cfBind();mathRender();
+  bindNotes();bindGen();ptBind();feBind();dvBind();dcBind();sfBind();xsBind();cfBind();mathRender();
 }
 /* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
 const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y4tkgIlrNoHjjsRSw_DjjA_NrBmdQfr';
