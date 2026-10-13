@@ -225,7 +225,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;S.fe=null;S.fd=null;if(v==='cartes')S.xc=null;render();if(v==='cartes'&&sb&&S.user)cartesLoad();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='depot'&&sb&&S.user)loadQuota();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){verifAdmin();admLoadU();xcQLoad()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;S.fe=null;S.fd=null;if(v==='cartes')S.xc=null;render();if(['dom','chap','feuilles','mfeuilles'].includes(v)&&sb&&S.user)feuillesLoad().then(()=>{if(S.v===v&&!S.fe&&!S.fd)render()});if(v==='cartes'&&sb&&S.user)cartesLoad();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='depot'&&sb&&S.user)loadQuota();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){verifAdmin();admLoadU();xcQLoad()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -274,7 +274,7 @@ const views={
       <button class="btn" onclick="chapRename('${c.id}')">Enregistrer</button><span class="sp"></span>${delBtn('c'+c.id,"chapDelete('"+c.id+"')",'Supprimer le chapitre')}</div></div>`).join('')+'</div>'
       :l.length?'<div class="cards">'+l.map(({c,i})=>`<button class="card topic chap" onclick="S.ch=${i};go('chap')"><h2>${c.n}</h2><p>Cours, exos et annales.</p></button>`).join('')+'</div>'
       :'<div class="empty">Aucun chapitre dans ce module pour le moment.</div>';
-    const blk=m=>`<section class="mod"><h2 class="mh">${esc(m.raw||'Module '+m.num)} <span class="badge">promo ${m.pr}</span></h2>${ed()?modEdit(m):''}${S.d==='maths'&&S.y===2&&m.num===3&&m.pr===2025?partielCard():''}${cards(all.filter(x=>x.c.mid===m.id))}${ed()?addChapHtml(m.id):''}</section>`;
+    const blk=m=>`<section class="mod"><h2 class="mh">${esc(m.raw||'Module '+m.num)} <span class="badge">promo ${m.pr}</span></h2>${ed()?modEdit(m):''}${S.d==='maths'&&S.y===2&&m.num===3&&m.pr===2025?partielCard():''}${mfCard(m)}${cards(all.filter(x=>x.c.mid===m.id))}${ed()?addChapHtml(m.id):''}</section>`;
     return `<div class="row"><button class="btn" onclick="go('home')">‹ ${YN[S.y]}</button></div>
     <h1>${D[S.d]} – ${YN[S.y]}</h1>
     <p class="lead">Choisis un module, puis un chapitre pour accéder à son cours, ses exos et ses annales.</p>${addModHtml()}`+
@@ -314,6 +314,7 @@ const views={
     </div>`;
   },
   feuilles(){return feuillesView()},
+  mfeuilles(){return feuillesView()},
   exos(){
     if(S.topic===null)return topicList();
     const tp=CHAP().t[S.topic],R=getR();
@@ -1678,13 +1679,14 @@ function topicList(){
 function render(){
   const app=$('app');
   if(!S.user)S.v='home';
-  if(S.y!==null&&!yOK(S.y)){S.y=null;if(['dom','chap','cours','exos','annales','cartes','feuilles','partiel','grille'].includes(S.v))S.v='home'}
-  if(['dom','chap','cours','exos','annales','cartes','feuilles','partiel','grille'].includes(S.v)&&S.y===null)S.v='home';
+  if(S.y!==null&&!yOK(S.y)){S.y=null;if(['dom','chap','cours','exos','annales','cartes','feuilles','mfeuilles','partiel','grille'].includes(S.v))S.v='home'}
+  if(['dom','chap','cours','exos','annales','cartes','feuilles','mfeuilles','partiel','grille'].includes(S.v)&&S.y===null)S.v='home';
   if(['chap','cours','exos','annales','cartes','feuilles'].includes(S.v)&&!(CHAPS[S.d]&&CHAPS[S.d][S.ch]))S.v='dom';
+  if(S.v==='mfeuilles'&&!MODS.find(m=>m.id===S.fm))S.v='dom';
   app.className='d-'+S.d;
-  const inD=['dom','chap','cours','exos','annales','cartes','feuilles','partiel'].includes(S.v),inC=['chap','cours','exos','annales','cartes','feuilles'].includes(S.v);
-  app.dataset.k=S.v==='cours'?'cours':(S.v==='exos'||S.v==='partiel')?'exos':(S.v==='dom'||S.v==='chap')?'dom':'other';
-  $('path').textContent=['depot','compte','admin','classement'].includes(S.v)?'~/'+S.v+'$':S.v==='grille'?'~/a'+S.y+'/notes$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales','cartes','feuilles'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+'$';
+  const inD=['dom','chap','cours','exos','annales','cartes','feuilles','mfeuilles','partiel'].includes(S.v),inC=['chap','cours','exos','annales','cartes','feuilles'].includes(S.v);
+  app.dataset.k=S.v==='cours'?'cours':(S.v==='exos'||S.v==='partiel'||S.v==='mfeuilles')?'exos':(S.v==='dom'||S.v==='chap')?'dom':'other';
+  $('path').textContent=['depot','compte','admin','classement'].includes(S.v)?'~/'+S.v+'$':S.v==='grille'?'~/a'+S.y+'/notes$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales','cartes','feuilles'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+(S.v==='mfeuilles'?'/feuilles':'')+'$';
   $('nav').innerHTML=S.user?`<button class="${S.v==='home'?'on':''}" onclick="go('home')">Accueil${S.y!==null?' · '+YN[S.y]:''}</button>`
     +(S.y===null?[]:Object.keys(D)).map(k=>`<button class="dn d-${k}${inD&&S.d===k?' on':''}" onclick="go('dom','${k}')">${D[k]}</button>`).join('')
     +['classement','depot','compte','admin'].filter(k=>k!=='admin'||S.role==='admin').map(k=>`<button class="${k===S.v?'on':''}" onclick="go('${k}')">${V[k]}${k==='compte'&&nfU()?` <span class="badge">${nfU()}</span>`:''}</button>`).join(''):'';
@@ -1698,7 +1700,7 @@ function render(){
   else if(S.err)html=`<section class="panel"><p class="bad">Impossible de charger les données : ${esc(S.err)}</p><div class="row"><button class="btn" onclick="enter(S.user)">Réessayer</button></div></section>`;
   else html=views[S.v]();
   $('view').innerHTML=(vmOn()?`<p class="note" role="status" style="margin:0 0 12px;border:1px dashed var(--line);padding:8px 12px">Vue membre : tu vois le site comme un membre (affichage seulement, tes droits restent ceux d'admin). <button class="btn" onclick="toggleVM()">Revenir en admin</button></p>`:'')+(S.msg?`<p class="${S.ko?'bad':'good'}" role="status" style="margin:0 0 12px">${esc(S.msg)}</p>`:'')+html+gModal();
-  bindNotes();bindGen();ptBind();dvBind();dcBind();sfBind();cfBind();mathRender();
+  bindNotes();bindGen();ptBind();feBind();dvBind();dcBind();sfBind();cfBind();mathRender();
 }
 /* ===== Supabase (clé publique : les droits réels sont fixés par les règles RLS de la base) ===== */
 const SB_URL='https://lfjpnqyjhqnuwompwhsu.supabase.co',SB_KEY='sb_publishable_y4tkgIlrNoHjjsRSw_DjjA_NrBmdQfr';
@@ -2390,7 +2392,17 @@ async function annLoad(){
 }
 /* ===== Feuilles d'exos : évaluations composées par l'admin avec les générateurs ===== */
 const r2=v=>Math.round(v*100)/100;
-const fOf=cid=>(DB.fl||[]).filter(f=>f.chapitre_id===cid).sort((a,b)=>a.ordre-b.ordre);
+const fOf=cid=>(DB.fl||[]).filter(f=>f.chapitre_id===cid&&f.mode!=='partiel').sort((a,b)=>a.ordre-b.ordre);
+const fOfM=mid=>(DB.fl||[]).filter(f=>f.module_id===mid).sort((a,b)=>a.ordre-b.ordre);
+const fMod=()=>S.v==='mfeuilles'?MODS.find(m=>m.id===S.fm):null;
+const fScope=()=>{const m=fMod();return m?fOfM(m.id):fOf(CHAP().id)};
+const secName=en=>en.nom||(CALC[en.gen]?CALC[en.gen].n:String(en.gen));
+const GALIAS={bestlim:'limites',normcalc:'normes'};
+function fPool(){
+  const m=fMod(),s=new Set();
+  if(m)Object.values(CHAPS).flat().filter(c=>c.mid===m.id).forEach(c=>c.ty.forEach(t=>{const g=GALIAS[t.generateur]||t.generateur;if(CALC[g]&&!CALC_ALIAS.includes(g))s.add(g)}));
+  return s.size?[...s]:CALC_KEYS.slice();
+}
 async function feuillesLoad(){
   DB.fl=[];S.fn={};
   try{
@@ -2400,6 +2412,14 @@ async function feuillesLoad(){
   }catch(e){}
 }
 function fBuild(f,seed){
+  if(f.mode==='partiel'){
+    const r=rng(seed*7919+13);
+    return (f.entrees||[]).map(en=>{
+      const pool=(en.gens||[]).map(g=>GALIAS[g]||g).filter(g=>CALC[g]);
+      const picks=pickN(r,pool.length,Math.min(en.nb||1,pool.length));
+      return{en,blocks:picks.map(gi=>({E:calcBuild(pool[gi],ri(r,2,9999),ri(r,0,9999))}))};
+    });
+  }
   return (f.entrees||[]).map((en,si)=>{
     const blocks=[];
     if(CALC[en.gen]){
@@ -2415,7 +2435,17 @@ function fBuild(f,seed){
 function fStart(id){
   const f=(DB.fl||[]).find(x=>x.id===id);if(!f)return;
   S.fe={w:'fe',id,seed:Math.floor(Math.random()*90000)+1,ans:{},res:{},done:false,note:0,max:0,det:null,saved:''};
+  if(f.mode==='partiel'&&f.duree_min)S.fe.end=Date.now()+f.duree_min*60000;
   S.fe.secs=fBuild(f,S.fe.seed);S.fd=null;render();
+}
+let FEI=null;
+function feBind(){
+  const run=(S.v==='feuilles'||S.v==='mfeuilles')&&S.fe&&!S.fe.done&&S.fe.end;
+  if(!run){if(FEI){clearInterval(FEI);FEI=null}return}
+  if(!FEI)FEI=setInterval(()=>{
+    if(!((S.v==='feuilles'||S.v==='mfeuilles')&&S.fe&&!S.fe.done&&S.fe.end)){clearInterval(FEI);FEI=null;return}
+    const left=S.fe.end-Date.now();if(left<=0){fSubmit();return}
+    const e=$('fec');if(e)e.textContent=clock(left)},1000);
 }
 async function fSubmit(){
   const P=S.fe,f=P&&(DB.fl||[]).find(x=>x.id===P.id);if(!f||P.done)return;
@@ -2423,7 +2453,7 @@ async function fSubmit(){
   P.det=P.secs.map((x,si)=>{let n=0,ok=0;
     x.blocks.forEach((bl,bi)=>bl.E.items.forEach((it,i)=>{n+=it.fields.length;ok+=cxGrade(it,i,si+'.'+bi+'.',P)}));
     const g=n?x.en.pts*ok/n:0;pts+=Number(x.en.pts);got+=g;
-    return{n:CALC[x.en.gen]?CALC[x.en.gen].n:x.en.gen,pts:Number(x.en.pts),ok,tot:n,got:g}});
+    return{n:secName(x.en),pts:Number(x.en.pts),ok,tot:n,got:g}});
   const k=pts>0?Number(f.total)/pts:0;
   P.det.forEach(d=>{d.pts=r2(d.pts*k);d.got=r2(d.got*k)});
   P.note=r2(got*k);P.max=Number(f.total);P.done=true;P.saved='';render();
@@ -2435,71 +2465,96 @@ async function fSubmit(){
 }
 function fSheetHtml(){
   const P=S.fe,f=DB.fl.find(x=>x.id===P.id);if(!f){S.fe=null;return ''}
-  const sp=(f.entrees||[]).reduce((a,e)=>a+Number(e.pts),0),kk=sp>0?Number(f.total)/sp:1;
+  const sp=(f.entrees||[]).reduce((a,e)=>a+Number(e.pts),0),kk=sp>0?Number(f.total)/sp:1,part=f.mode==='partiel';
   const body=P.secs.map((x,si)=>{
     const d=P.done&&P.det?P.det[si]:null;
-    return `<section class="panel" style="margin-top:14px"><h3>Exercice ${si+1} – ${esc(CALC[x.en.gen]?CALC[x.en.gen].n:x.en.gen)} (${f1(r2(x.en.pts*kk))} pt${x.en.pts*kk>1?'s':''})${d&&d.tot?` : ${f1(d.got)} / ${f1(d.pts)}`:''}</h3>`+
-      x.blocks.map((bl,bi)=>`<p class="note" style="margin:10px 0 0">${esc(bl.E.titre)} : ${mxs(bl.E.consigne)}</p>`+
-        bl.E.items.map((it,i)=>cxItemHtml(it,i,si+'.'+bi+'.',P,{train:0,lvl:3,noHints:1,sol:P.done,show:P.done})).join('')).join('')+`</section>`}).join('');
+    return `<section class="panel" style="margin-top:14px"><h3>${part?'':'Exercice '+(si+1)+' – '}${esc(secName(x.en))} (${f1(r2(x.en.pts*kk))} pt${x.en.pts*kk>1?'s':''})${d&&d.tot?` : ${f1(d.got)} / ${f1(d.pts)}`:''}</h3>`+
+      (x.blocks.length?x.blocks.map((bl,bi)=>`<p class="note" style="margin:10px 0 0">${esc(bl.E.titre)} : ${mxs(bl.E.consigne)}</p>`+
+        bl.E.items.map((it,i)=>cxItemHtml(it,i,si+'.'+bi+'.',P,{train:0,lvl:3,noHints:1,sol:P.done,show:P.done})).join('')).join(''):'<div class="empty">Aucun exercice disponible pour cette section.</div>')+`</section>`}).join('');
   if(P.done)return `<div class="row"><button class="btn" onclick="S.fe=null;render()">‹ Feuilles</button></div><h1>${esc(f.titre)} : résultat</h1>
     <section class="panel"><h3>Note : ${f1(P.note)} / ${f1(P.max)}</h3>
-    <ul class="q">${P.det.map((d,i)=>`<li><span>Exercice ${i+1} – ${esc(d.n)}</span><span class="badge">${f1(d.got)} / ${f1(d.pts)}</span></li>`).join('')}</ul>
+    <ul class="q">${P.det.map((d,i)=>`<li><span>${part?'':'Exercice '+(i+1)+' – '}${esc(d.n)}</span><span class="badge">${f1(d.got)} / ${f1(d.pts)}</span></li>`).join('')}</ul>
     ${P.saved?`<p class="note">${esc(P.saved)}</p>`:''}
     <div class="row" style="margin-top:12px"><button class="btn" onclick="fStart('${f.id}')">Refaire avec un nouveau tirage</button></div></section>${body}`;
-  return `<div class="row"><button class="btn" onclick="S.fe=null;render()">‹ Feuilles</button></div><h1>${esc(f.titre)}</h1>
-    <p class="lead">${f.description?esc(f.description)+' ':''}Note sur ${f1(Number(f.total))}${f.duree_min?' · durée conseillée '+f.duree_min+' min':''}. Pas d'aide : réponds, puis rends ta copie.</p>${body}
+  return `<div class="row" style="justify-content:space-between"><button class="btn" onclick="S.fe=null;render()">‹ Feuilles</button>${P.end?`<span class="badge" style="font-size:16px">⏱ <span id="fec">${clock(P.end-Date.now())}</span></span>`:''}</div><h1>${esc(f.titre)}</h1>
+    <p class="lead">${f.description?esc(f.description)+' ':''}Note sur ${f1(Number(f.total))}${f.duree_min?(part?' · durée '+f.duree_min+' min (la copie est rendue automatiquement à la fin)':' · durée conseillée '+f.duree_min+' min'):''}. Pas d'aide : réponds, puis rends ta copie.</p>${body}
     <div class="row" style="margin-top:14px"><button class="btn" onclick="fSubmit()">Rendre la copie</button></div>`;
 }
+function mfCard(m){
+  const n=fOfM(m.id).filter(f=>f.publie||ed()).length;
+  return (n||ed())?`<div class="cards" style="margin-bottom:14px"><button class="card topic" style="border-left-color:#e0a040" onclick="S.fm='${m.id}';go('mfeuilles')"><h2>Feuilles de partiel du module</h2><p>Sujets chronométrés tirés au hasard sur tout le module${n?' ('+n+')':''}.</p></button></div>`:'';
+}
 function feuillesView(){
-  const c=CHAP();
   if(S.fe)return fSheetHtml();
-  const L=fOf(c.id).filter(f=>f.publie||ed());
-  return `<div class="row"><button class="btn" onclick="go('chap')">‹ ${c.n}</button></div>
-  <h1>Feuilles d'exos – ${c.n}</h1>
-  <p class="lead">Des évaluations composées avec les générateurs : tu réponds à tout, tu rends ta copie, la note est calculée automatiquement.</p>`+
-  (L.length?'<ul class="q">'+L.map((f,i)=>{const n=(S.fn||{})[f.id];
-    return `<li><span><button class="lnk" onclick="fStart('${f.id}')">${esc(f.titre)}</button> <span class="note" style="margin:0">${(f.entrees||[]).length} exo${(f.entrees||[]).length>1?'s':''} · /${f1(Number(f.total))}${f.publie?'':' · brouillon (invisible des membres)'}</span></span>
+  const m=fMod(),c=m?null:CHAP();
+  const L=(m?fOfM(m.id):fOf(c.id)).filter(f=>f.publie||ed());
+  return `<div class="row"><button class="btn" onclick="${m?"go('dom')":"go('chap')"}">‹ ${m?esc(m.raw||'Module '+m.num):c.n}</button></div>
+  <h1>${m?'Feuilles de partiel – '+esc(m.raw||'Module '+m.num):"Feuilles d'exos – "+c.n}</h1>
+  <p class="lead">${m?'Des sujets de type partiel sur tout le module : exercices tirés au hasard par section, chronomètre, correction automatique.':'Des évaluations composées avec les générateurs : tu réponds à tout, tu rends ta copie, la note est calculée automatiquement.'}</p>`+
+  (L.length?'<ul class="q">'+L.map(f=>{const n=(S.fn||{})[f.id],ne=(f.entrees||[]).length;
+    return `<li><span><button class="lnk" onclick="fStart('${f.id}')">${esc(f.titre)}</button> <span class="note" style="margin:0">${ne} ${f.mode==='partiel'?'section':'exo'}${ne>1?'s':''} · /${f1(Number(f.total))}${f.mode==='partiel'&&f.duree_min?' · '+f.duree_min+' min':''}${f.publie?'':' · brouillon (invisible des membres)'}</span></span>
     <span class="row" style="margin:0">${n?`<span class="badge">meilleure : ${f1(n.best)} / ${f1(Number(n.max))}</span>`:''}
-    ${ed()?`<button class="btn" onclick="fMove('${f.id}',-1)" title="Monter">↑</button><button class="btn" onclick="fMove('${f.id}',1)" title="Descendre">↓</button><button class="btn" onclick="fEdit('${f.id}')">Modifier</button>`:''}</span></li>`}).join('')+'</ul>'
+    ${ed()?`<button class="btn" onclick="fToggle('${f.id}')">${f.publie?'Masquer aux membres':'Publier'}</button><button class="btn" onclick="fMove('${f.id}',-1)" title="Monter">↑</button><button class="btn" onclick="fMove('${f.id}',1)" title="Descendre">↓</button><button class="btn" onclick="fEdit('${f.id}')">Modifier</button>`:''}</span></li>`}).join('')+'</ul>'
    :'<div class="empty">Aucune feuille pour le moment.</div>')+fEditor();
 }
-function fNew(){S.fd={id:null,titre:'',description:'',total:20,duree_min:'',publie:false,entrees:[]};render()}
-function fEdit(id){const f=DB.fl.find(x=>x.id===id);S.fd=Object.assign({},f,{entrees:(f.entrees||[]).map(e=>Object.assign({},e)),description:f.description||'',duree_min:f.duree_min||''});S.cfx=null;render()}
+async function fToggle(id){
+  const f=DB.fl.find(x=>x.id===id),r=await sb.from('feuilles').update({publie:!f.publie}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await feuillesLoad();flash(f.publie?'Feuille masquée aux membres.':'Feuille publiée : les membres la voient.');
+}
+function fNew(){
+  const m=fMod();
+  S.fd={id:null,mode:m?'partiel':'fixe',titre:'',description:'',total:20,duree_min:m?90:'',publie:true,entrees:[]};render();
+}
+function fEdit(id){const f=DB.fl.find(x=>x.id===id);S.fd=Object.assign({},f,{mode:f.mode||'fixe',entrees:(f.entrees||[]).map(e=>Object.assign({},e,e.gens?{gens:e.gens.slice()}:{})),description:f.description||'',duree_min:f.duree_min||''});S.cfx=null;render()}
 const fdSet=(k,v)=>{S.fd[k]=v};
 const fdEn=(i,k,v)=>{S.fd.entrees[i][k]=Number(v)};
+const fdTxt=(i,k,v)=>{S.fd.entrees[i][k]=v};
+function fdPool(i,g,on){const a=S.fd.entrees[i].gens;const j=a.indexOf(g);if(on&&j<0)a.push(g);if(!on&&j>=0)a.splice(j,1)}
 function fdAdd(){const g=$('fd_g').value;if(!g)return;S.fd.entrees.push({gen:g,n:3,pts:4});render()}
+function fdAddSec(){S.fd.entrees.push({nom:'Section '+(S.fd.entrees.length+1),gens:fPool(),nb:1,pts:4});render()}
 function fdMove(i,d){const E=S.fd.entrees,j=i+d;if(j<0||j>=E.length)return;[E[i],E[j]]=[E[j],E[i]];render()}
 function fdDel(i){S.fd.entrees.splice(i,1);render()}
 function fEditor(){
   if(!ed())return '';
-  const d=S.fd,sum=d?d.entrees.reduce((a,e)=>a+(Number(e.pts)||0),0):0;
-  return `<div class="edb"><h4>Feuilles d'exos</h4><div class="edr"><button class="btn" onclick="fNew()">Nouvelle feuille</button></div>`+(d?`
-   <div class="edr"><label>Titre<input type="text" maxlength="200" value="${esc(d.titre)}" oninput="fdSet('titre',this.value)" style="min-width:280px"></label>
-    <label>Note totale<input type="number" min="1" step="0.5" value="${esc(d.total)}" oninput="fdSet('total',this.value)" style="width:90px"></label>
-    <label>Durée conseillée (min)<input type="number" min="1" value="${esc(d.duree_min)}" oninput="fdSet('duree_min',this.value)" style="width:90px"></label>
-    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" ${d.publie?'checked':''} onchange="fdSet('publie',this.checked)"> visible des membres</label></div>
-   <div class="edr"><label>Consigne (facultatif)<textarea maxlength="2000" oninput="fdSet('description',this.value)" style="min-height:50px">${esc(d.description)}</textarea></label></div>
-   <h4 style="margin-top:10px">Exercices de la feuille</h4>
-   ${d.entrees.map((e,i)=>`<div class="edr"><b>${i+1}.</b> <span style="min-width:200px">${esc(CALC[e.gen]?CALC[e.gen].n:e.gen+' (générateur introuvable)')}</span>
+  const d=S.fd,m=fMod(),sum=d?d.entrees.reduce((a,e)=>a+(Number(e.pts)||0),0):0,part=d&&d.mode==='partiel';
+  const pool=d&&part?fPool():[];
+  const rows=!d?'':part?d.entrees.map((e,i)=>`<div class="edb" style="margin:8px 0"><div class="edr"><b>${i+1}.</b>
+      <label>Section<input type="text" maxlength="120" value="${esc(e.nom||'')}" oninput="fdTxt(${i},'nom',this.value)" style="min-width:240px"></label>
+      <label>Exos tirés<input type="number" min="1" max="10" value="${e.nb||1}" oninput="fdEn(${i},'nb',this.value)" style="width:80px"></label>
+      <label>Points<input type="number" min="0.5" step="0.5" value="${e.pts}" oninput="fdEn(${i},'pts',this.value)" style="width:80px"></label>
+      <button class="btn" onclick="fdMove(${i},-1)" title="Monter">↑</button><button class="btn" onclick="fdMove(${i},1)" title="Descendre">↓</button><button class="btn" onclick="fdDel(${i})" title="Retirer">✕</button></div>
+      <details><summary>Générateurs possibles pour cette section (${(e.gens||[]).length})</summary><div class="edr">${[...new Set(pool.concat(e.gens||[]))].filter(g=>CALC[g]).map(g=>`<label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" ${(e.gens||[]).includes(g)?'checked':''} onchange="fdPool(${i},'${g}',this.checked)"> ${esc(CALC[g].n)}</label>`).join('')}</div></details></div>`).join('')
+    :d.entrees.map((e,i)=>`<div class="edr"><b>${i+1}.</b> <span style="min-width:200px">${esc(CALC[e.gen]?CALC[e.gen].n:e.gen+' (générateur introuvable)')}</span>
      <label>Questions<input type="number" min="1" max="30" value="${e.n}" oninput="fdEn(${i},'n',this.value)" style="width:80px"></label>
      <label>Points<input type="number" min="0.5" step="0.5" value="${e.pts}" oninput="fdEn(${i},'pts',this.value)" style="width:80px"></label>
-     <button class="btn" onclick="fdMove(${i},-1)" title="Monter">↑</button><button class="btn" onclick="fdMove(${i},1)" title="Descendre">↓</button><button class="btn" onclick="fdDel(${i})" title="Retirer">✕</button></div>`).join('')||'<div class="note" style="margin:0">Aucun exercice : ajoutes-en un ci-dessous.</div>'}
-   <div class="edr"><label>Ajouter un exercice<select id="fd_g"><option value="">— générateur —</option>${CALC_KEYS.map(k=>`<option value="${k}">${esc(CALC[k].n)}</option>`).join('')}</select></label><button class="btn" onclick="fdAdd()">Ajouter</button></div>
-   <p class="note">« Questions » = nombre de questions (par ex. de limites ou de calculs) tirées dans le générateur. Les points sont des poids : leur somme (${f1(sum)}) est ramenée à la note totale (${f1(Number(d.total)||0)}).</p>
-   <div class="edr"><button class="btn" onclick="fSave()">Enregistrer la feuille</button>${d.id?`<button class="btn" onclick="fStart('${d.id}')">Aperçu</button>`:''}<button class="btn" onclick="S.fd=null;render()">Fermer</button><span class="sp"></span>
-    ${d.id?delBtn('f'+d.id,"fDelete('"+d.id+"')",'Supprimer la feuille'):''}</div>`:'')+`</div>`;
+     <button class="btn" onclick="fdMove(${i},-1)" title="Monter">↑</button><button class="btn" onclick="fdMove(${i},1)" title="Descendre">↓</button><button class="btn" onclick="fdDel(${i})" title="Retirer">✕</button></div>`).join('');
+  return `<div class="edb"><h4>${m?'Feuilles de partiel du module':"Feuilles d'exos"}</h4><div class="edr"><button class="btn" onclick="fNew()">${m?'Nouveau partiel':'Nouvelle feuille'}</button></div>`+(d?`
+   <div class="edr"><label>Titre<input type="text" maxlength="200" value="${esc(d.titre)}" oninput="fdSet('titre',this.value)" style="min-width:280px"></label>
+    <label>Note totale<input type="number" min="1" step="0.5" value="${esc(d.total)}" oninput="fdSet('total',this.value)" style="width:90px"></label>
+    <label>Durée${part?'':' conseillée'} (min)<input type="number" min="1" value="${esc(d.duree_min)}" oninput="fdSet('duree_min',this.value)" style="width:90px"></label>
+    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" ${d.publie?'checked':''} onchange="fdSet('publie',this.checked)"> visible des membres</label></div>
+   <div class="edr"><label>Consigne (facultatif)<textarea maxlength="2000" oninput="fdSet('description',this.value)" style="min-height:50px">${esc(d.description)}</textarea></label></div>
+   <h4 style="margin-top:10px">${part?'Sections du sujet':'Exercices de la feuille'}</h4>
+   ${rows||`<div class="note" style="margin:0">${part?'Aucune section : ajoutes-en une ci-dessous.':'Aucun exercice : ajoutes-en un ci-dessous.'}</div>`}
+   ${part?`<div class="edr"><button class="btn" onclick="fdAddSec()">Ajouter une section</button></div>`
+   :`<div class="edr"><label>Ajouter un exercice<select id="fd_g"><option value="">— générateur —</option>${CALC_KEYS.map(k=>`<option value="${k}">${esc(CALC[k].n)}</option>`).join('')}</select></label><button class="btn" onclick="fdAdd()">Ajouter</button></div>`}
+   <p class="note">${part?'Chaque section tire « Exos tirés » exercices au hasard parmi ses générateurs (ceux du module par défaut), avec un nouveau tirage à chaque tentative. ':'« Questions » = nombre de questions (par ex. de limites ou de calculs) tirées dans le générateur. '}Les points sont des poids : leur somme (${f1(sum)}) est ramenée à la note totale (${f1(Number(d.total)||0)}).</p>
+   <div class="edr"><button class="btn" onclick="fSave()">Enregistrer</button>${d.id?`<button class="btn" onclick="fStart('${d.id}')">Aperçu</button>`:''}<button class="btn" onclick="S.fd=null;render()">Fermer</button><span class="sp"></span>
+    ${d.id?delBtn('f'+d.id,"fDelete('"+d.id+"')",'Supprimer'):''}</div>`:'')+`</div>`;
 }
 async function fSave(){
-  const d=S.fd,titre=(d.titre||'').trim();
+  const d=S.fd,titre=(d.titre||'').trim(),part=d.mode==='partiel';
   if(!titre)return flash('Donne un titre à la feuille.',1);
-  if(!d.entrees.length)return flash('Ajoute au moins un exercice.',1);
-  if(d.entrees.some(e=>!(e.n>=1)||!(e.pts>0)))return flash('Chaque exercice : au moins 1 question et des points > 0.',1);
+  if(!d.entrees.length)return flash(part?'Ajoute au moins une section.':'Ajoute au moins un exercice.',1);
+  if(d.entrees.some(e=>!(e.pts>0)||(part?!(e.nb>=1)||!(e.gens||[]).length||!(e.nom||'').trim():!(e.n>=1))))return flash(part?'Chaque section : un nom, au moins 1 exo, au moins 1 générateur et des points > 0.':'Chaque exercice : au moins 1 question et des points > 0.',1);
   const tot=Number(d.total);if(!(tot>0))return flash('Note totale invalide.',1);
-  const row={titre:titre.slice(0,200),description:(d.description||'').trim().slice(0,2000)||null,total:tot,duree_min:d.duree_min?Math.round(Number(d.duree_min)):null,publie:!!d.publie,
-    entrees:d.entrees.map(e=>({gen:e.gen,n:Math.round(e.n),pts:Number(e.pts)}))};
+  const row={titre:titre.slice(0,200),description:(d.description||'').trim().slice(0,2000)||null,total:tot,duree_min:d.duree_min?Math.round(Number(d.duree_min)):null,publie:!!d.publie,mode:part?'partiel':'fixe',
+    entrees:d.entrees.map(e=>part?{nom:e.nom.trim().slice(0,120),gens:e.gens.slice(),nb:Math.round(e.nb),pts:Number(e.pts)}:{gen:e.gen,n:Math.round(e.n),pts:Number(e.pts)})};
+  const m=fMod();
   const r=d.id?await sb.from('feuilles').update(row).eq('id',d.id).select()
-    :await sb.from('feuilles').insert(Object.assign(row,{chapitre_id:CHAP().id,ordre:fOf(CHAP().id).length+1})).select();
-  if(refused(r))return flash(/relation|feuilles/i.test(refused(r))?"Table « feuilles » absente : lance maj-feuilles.sql dans Supabase.":refused(r),1);
+    :await sb.from('feuilles').insert(Object.assign(row,m?{module_id:m.id,chapitre_id:null}:{chapitre_id:CHAP().id},{ordre:fScope().length+1})).select();
+  if(refused(r))return flash(/relation|feuilles|column/i.test(refused(r))?"Base pas à jour : relance maj-feuilles.sql dans Supabase.":refused(r),1);
   S.fd=null;await feuillesLoad();flash('Feuille enregistrée.');
 }
 async function fDelete(id){
@@ -2509,7 +2564,7 @@ async function fDelete(id){
   S.fd=null;await feuillesLoad();flash('Feuille supprimée (avec les notes associées).');
 }
 async function fMove(id,d){
-  const L=fOf(CHAP().id),i=L.findIndex(x=>x.id===id),j=i+d;if(i<0||j<0||j>=L.length)return;
+  const L=fScope(),i=L.findIndex(x=>x.id===id),j=i+d;if(i<0||j<0||j>=L.length)return;
   [L[i],L[j]]=[L[j],L[i]];
   const rs=await Promise.all(L.map((x,k)=>x.ordre===k+1?null:sb.from('feuilles').update({ordre:k+1}).eq('id',x.id).select()));
   const bad=rs.find(r=>r&&refused(r));if(bad)return flash(refused(bad),1);
@@ -2537,6 +2592,8 @@ async function admReplace(id,inp){
   S.pvId=null;await reloadDocs();flash('Fichier remplacé : même emplacement, nouvelle version.');
 }
 const bTog=(k,o)=>{(S.bo=S.bo||{})[k]=o};
+const fRowB=f=>`<li><span>${esc(f.titre)} <span class="note" style="margin:0">${f.mode==='partiel'?'partiel':'feuille'} · ${f.publie?'visible':'brouillon'} · ${(f.entrees||[]).length} ${f.mode==='partiel'?'section':'exo'}(s)</span></span>
+        <span class="row" style="margin:0"><button class="btn danger${S.cfx==='f'+f.id?' go':''}" onclick="fDelete('${f.id}')">${S.cfx==='f'+f.id?'Confirmer : supprimer':'Supprimer'}</button></span></li>`;
 function admBiblio(){
   const docs=DB.docs.filter(d=>d.statut==='publie'),fl=DB.fl||[];
   const op=k=>(S.bo||{})[k]?' open':'';
@@ -2549,16 +2606,15 @@ function admBiblio(){
   const chBlock=(c,pre)=>{
     const cd=docs.filter(d=>d.chapitre_id===c.id),cf=fl.filter(f=>f.chapitre_id===c.id).sort((a,b)=>a.ordre-b.ordre);
     const parts=Object.keys(TY).map(t=>{const x=cd.filter(d=>d.type===t);return x.length?`<h4 style="margin:8px 0 2px;font-size:13px">${TY[t]} (${x.length})</h4><ul class="q">${x.map(docRow).join('')}</ul>`:''}).join('')
-     +(cf.length?`<h4 style="margin:8px 0 2px;font-size:13px">Feuilles d'exos (${cf.length})</h4><ul class="q">${cf.map(f=>`<li><span>${esc(f.titre)} <span class="note" style="margin:0">${f.publie?'visible':'brouillon'} · ${(f.entrees||[]).length} exo(s)</span></span>
-        <span class="row" style="margin:0"><button class="btn danger${S.cfx==='f'+f.id?' go':''}" onclick="fDelete('${f.id}')">${S.cfx==='f'+f.id?'Confirmer : supprimer':'Supprimer'}</button></span></li>`).join('')}</ul>`:'');
+     +(cf.length?`<h4 style="margin:8px 0 2px;font-size:13px">Feuilles d'exos (${cf.length})</h4><ul class="q">${cf.map(fRowB).join('')}</ul>`:'');
     return det(pre+c.id,`${c.n} <span class="badge">${cd.length} doc${cd.length>1?'s':''}${cf.length?' · '+cf.length+' feuille'+(cf.length>1?'s':''):''}</span>`,parts||'<div class="note" style="margin:4px 0">Rien de publié ici.</div>');
   };
   let used=new Set(),html='';
   [1,2,3,4,5].forEach(an=>{
     const inner=Object.keys(D).map(m=>{
       const mods=MODS.filter(x=>x.matiere===m&&x.an===an).sort((a,b)=>a.num-b.num),chs=CHAPS[m]||[];
-      const blocks=mods.map(md=>{const cs=chs.filter(c=>c.mid===md.id);cs.forEach(c=>used.add(c.id));
-        return cs.length?det('m'+md.id,`Module ${md.num}${md.raw?' · '+esc(md.raw):''} <span class="note" style="margin:0">promo ${md.pr}</span>`,cs.map(c=>chBlock(c,'c')).join('')):''}).join('');
+      const blocks=mods.map(md=>{const cs=chs.filter(c=>c.mid===md.id),mf=fl.filter(f=>f.module_id===md.id).sort((a,b)=>a.ordre-b.ordre);cs.forEach(c=>used.add(c.id));
+        return cs.length||mf.length?det('m'+md.id,`Module ${md.num}${md.raw?' · '+esc(md.raw):''} <span class="note" style="margin:0">promo ${md.pr}</span>`,(mf.length?`<h4 style="margin:8px 0 2px;font-size:13px">Feuilles de partiel du module (${mf.length})</h4><ul class="q">${mf.map(fRowB).join('')}</ul>`:'')+cs.map(c=>chBlock(c,'c')).join('')):''}).join('');
       const orph=chs.filter(c=>c.an===an&&!c.mid&&!used.has(c.id));orph.forEach(c=>used.add(c.id));
       const body=blocks+(orph.length?det('o'+m+an,'Autres chapitres',orph.map(c=>chBlock(c,'c')).join('')):'');
       return body?det('y'+an+m,D[m],body):'';
