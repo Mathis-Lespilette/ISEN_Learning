@@ -97,7 +97,7 @@ ul.q li{display:flex;gap:10px;justify-content:space-between;align-items:center;b
 .dvbox{min-width:0}
 .dvnav input{width:64px}
 .dvslide{border:1px solid var(--line);background:#fff;line-height:0;min-height:80px}
-.dvslide canvas{width:100%;height:auto;display:block}
+.dvslide canvas{width:100%;max-width:none;height:auto;display:block;margin:0;border:0}
 .dvnotes{margin-top:12px}
 .dvd{width:100%;height:auto;touch-action:none;border:1px solid var(--line);background:var(--panel);display:block;cursor:crosshair}
 .dvd.grid{background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:5% 8.888%}
@@ -296,21 +296,9 @@ const views={
   cours(){
     return `<div class="row"><button class="btn" onclick="go('chap')">‹ ${CHAP().n}</button></div>
     <h1>Cours – ${CHAP().n}</h1>
-    <p class="lead">Ouvre un document pour le consulter avant de le télécharger, et note tes remarques à côté.</p>
-    <div class="grid3${S.big?' wide':''}">
+    <p class="lead">Ouvre un document pour le consulter avant de le télécharger, et ajoute tes notes, dessins ou photos directement sur chaque diapositive.</p>
+    <div class="grid3 wide">
       ${coursPanels()}
-      <section class="panel notes"><h3>Mes notes</h3>
-        <div class="row"><button class="btn" onclick="pg(-1)" aria-label="Page précédente">‹</button><span id="pn"></span>
-        <button class="btn" onclick="pg(1)" aria-label="Page suivante">›</button>
-        <button class="btn" onclick="addPg()">Nouvelle page</button>
-        <button class="btn" onclick="delPg()">Supprimer la page</button>
-        <button class="btn" onclick="S.big=!S.big;render()">${S.big?'Réduire':'Agrandir'}</button>
-        <span id="ns" class="note" role="status" style="margin:0"></span></div>
-        <textarea id="nt" placeholder="Écris tes commentaires sur ce cours… Équations : $…$ dans la ligne, $$…$$ centrée."></textarea>
-        <div id="ntp" class="ltx"></div>
-        <canvas id="cv" width="900" height="1200"></canvas>
-        <div class="row" style="margin:8px 0 0"><button class="btn" onclick="clearCv()">Effacer le dessin</button></div>
-        <p class="note">Tes notes sont enregistrées dans ton compte (toi seul les vois) et te suivent d'un appareil à l'autre.</p></section>
     </div>`;
   },
   feuilles(){return feuillesView()},
