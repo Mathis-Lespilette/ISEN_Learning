@@ -137,6 +137,12 @@ code{background:var(--sunk);border:1px solid var(--line);border-radius:4px;paddi
 select,input[type=password],input[type=text],input[type=email],input[type=number]{background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;min-height:42px}
 select:focus,input:focus,textarea:focus{border-color:var(--brand)}
 textarea{width:100%;min-height:180px;background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:12px 14px;resize:vertical}
+.cedit,.cin{width:100%;background:#12161f;color:#e6e9f2;border:1.5px solid var(--line);border-radius:8px;padding:12px 14px;font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;resize:vertical}
+.cedit{min-height:340px}.cin{min-height:70px}
+.cout{background:#12161f;color:#e6e9f2;border-radius:8px;padding:12px 14px;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:320px;overflow:auto;margin:6px 0}
+.cout.ko{border-left:4px solid var(--ko)}.cout.err{color:#ff9a92}
+.ctest{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0}.ctest.ok{border-left:5px solid var(--ok)}.ctest.ko{border-left:5px solid var(--ko)}
+.enonce code{background:var(--sunk);padding:1px 6px;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
 canvas{width:100%;background:#161a24;border:1px solid var(--line);border-radius:6px;touch-action:none;margin-top:10px;display:block;max-width:900px;height:auto}
 .preview{min-height:320px;display:flex;align-items:center;justify-content:center}
 .lvl{background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:9px 16px;color:var(--mut);font-weight:600}
@@ -274,7 +280,7 @@ const SB={c:(()=>{try{const v=localStorage.getItem('ros_sb');return v===null?mat
 function sbToggle(){SB.c=!SB.c;try{localStorage.setItem('ros_sb',SB.c?'1':'0')}catch(e){}const a=document.getElementById('app');a.classList.toggle('sb-closed',SB.c);document.body.classList.toggle('sbc-on',SB.c&&!!S.user)}
 const ICO={maths:'<svg viewBox="0 0 24 24"><path d="M18 5H6l6 7-6 7h12"/></svg>',physique:'<svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>',prog:'<svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg>',hum:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>',notes:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>',rank:'<svg viewBox="0 0 24 24"><path d="M4 21V12h5v9M9.5 21V4h5v17M15 21v-6h5v6"/></svg>'};
 const D={maths:'Maths',physique:'Physique',prog:'Prog',hum:'Humanités et Langues'};
-const V={home:'Accueil',cours:'Cours',exos:'Exos',annales:'Annales',cartes:'Cartes',feuilles:'Feuilles',depot:'Dépôt',compte:'Mon compte',classement:'Classement',grille:'Mon tableau de notes',admin:'Admin'};
+const V={home:'Accueil',cours:'Cours',exos:'Exos',annales:'Annales',cartes:'Cartes',feuilles:'Feuilles',codes:'Exos de code',depot:'Dépôt',compte:'Mon compte',classement:'Classement',grille:'Mon tableau de notes',admin:'Admin'};
 const LV=[
   {n:'Guidé',t:'Indications complètes, étape par étape.'},
   {n:'Intermédiaire',t:'Un seul indice, à demander.'},
@@ -308,7 +314,7 @@ const ls={
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 
-function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;S.fe=null;S.fd=null;if(v==='cartes')S.xc=null;render();if(['dom','chap','feuilles','mfeuilles'].includes(v)&&sb&&S.user)feuillesLoad().then(()=>{if(S.v===v&&!S.fe&&!S.fd)render()});if(v==='cartes'&&sb&&S.user)cartesLoad();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='depot'&&sb&&S.user)loadQuota();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){verifAdmin();admLoadU();xcQLoad()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
+function go(v,d){S.v=v;S.msg='';if(d){if(d!==S.d)S.ch=null;S.d=d}if(['home','dom','depot','compte','admin','grille','classement'].includes(v))S.ch=null;S.topic=null;S.ex=null;S.cf=false;S.docId=null;S.pvId=null;S.corId=null;S.tab=0;S.yr="";S.photos=[];S.cfd=null;S.cfx=null;S.pk=null;S.fe=null;S.fd=null;S.ce=null;S.cef=null;if(v==='cartes')S.xc=null;render();if(['dom','chap','feuilles','mfeuilles'].includes(v)&&sb&&S.user)feuillesLoad().then(()=>{if(S.v===v&&!S.fe&&!S.fd)render()});if(['chap','codes'].includes(v)&&sb&&S.user)codeLoad().then(()=>{if(S.v===v&&!S.ce&&!S.cef)render()});if(v==='cartes'&&sb&&S.user)cartesLoad();if(v==='compte'&&sb&&S.user){acctLoad();loadNotifs()}if(v==='depot'&&sb&&S.user)loadQuota();if(v==='grille'&&sb&&S.user){S.gs=1;gridLoad()}if(v==='classement'&&sb&&S.user){S.cl.a=S.y||S.cl.a;if(!S.cl.promo)S.cl.promo=S.prof.promo||null;clsLoad()}if(v==='admin'&&sb&&S.user&&S.role==='admin'){verifAdmin();admLoadU();xcQLoad()}if(v==='partiel'&&S.pth===undefined&&sb&&S.user)pthLoad()}
 function tabs(){
   return '<div class="tabs">'+Object.keys(D).map(k=>
     `<button class="tab d-${k}${k===S.d?' on':''}" onclick="go(S.v,'${k}')">${D[k]}</button>`).join('')+'</div>';
@@ -377,7 +383,8 @@ const views={
     <div class="cards">
       <button class="card topic" onclick="go('exos')"><h2>Exos</h2><p>Exercices types, du guidé à l'examen.</p></button>
       <button class="card topic" style="border-left-color:#3b6fd4" onclick="go('annales')"><h2>Annales</h2><p>Sujets avec ou sans correction.</p></button>
-      <button class="card topic" style="border-left-color:#e0a040" onclick="go('feuilles')"><h2>Feuilles d'exos</h2><p>Évaluations notées, composées par l'admin.</p></button>
+      ${(S.d==='prog'||codesOf(c.id).length||ed())?`<button class="card topic" style="border-left-color:#4fb477" onclick="go('codes')"><h2>Exos de code</h2><p>Écris du C++, compile-le et teste-le directement ici.</p></button>`:''}
+      <button class="card topic" style="border-left-color:#e0a040" onclick="go('feuilles')"><h2>Feuilles d'exos</h2><p>Évaluations notées : celles de l'admin et les tiennes.</p></button>
     </div>`;
   },
   cours(){
@@ -389,6 +396,7 @@ const views={
     </div>`;
   },
   feuilles(){return feuillesView()},
+  codes(){return codesView()},
   mfeuilles(){return feuillesView()},
   exos(){
     if(S.topic===null)return topicList();
@@ -1854,14 +1862,14 @@ function topicList(){
 function render(){
   const app=$('app');
   if(!S.user)S.v='home';
-  if(S.y!==null&&!yOK(S.y)){S.y=null;if(['dom','chap','cours','exos','annales','cartes','feuilles','mfeuilles','partiel','grille'].includes(S.v))S.v='home'}
-  if(['dom','chap','cours','exos','annales','cartes','feuilles','mfeuilles','partiel','grille'].includes(S.v)&&S.y===null)S.v='home';
-  if(['chap','cours','exos','annales','cartes','feuilles'].includes(S.v)&&!(CHAPS[S.d]&&CHAPS[S.d][S.ch]))S.v='dom';
+  if(S.y!==null&&!yOK(S.y)){S.y=null;if(['dom','chap','cours','exos','annales','cartes','feuilles','codes','mfeuilles','partiel','grille'].includes(S.v))S.v='home'}
+  if(['dom','chap','cours','exos','annales','cartes','feuilles','codes','mfeuilles','partiel','grille'].includes(S.v)&&S.y===null)S.v='home';
+  if(['chap','cours','exos','annales','cartes','feuilles','codes'].includes(S.v)&&!(CHAPS[S.d]&&CHAPS[S.d][S.ch]))S.v='dom';
   if(S.v==='mfeuilles'&&!MODS.find(m=>m.id===S.fm))S.v='dom';
   app.className='d-'+S.d;
-  const inD=['dom','chap','cours','exos','annales','cartes','feuilles','mfeuilles','partiel'].includes(S.v),inC=['chap','cours','exos','annales','cartes','feuilles'].includes(S.v);
-  app.dataset.k=S.v==='cours'?'cours':(S.v==='exos'||S.v==='partiel'||S.v==='mfeuilles')?'exos':(S.v==='dom'||S.v==='chap')?'dom':'other';
-  $('path').textContent=['depot','compte','admin','classement'].includes(S.v)?'~/'+S.v+'$':S.v==='grille'?'~/a'+S.y+'/notes$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales','cartes','feuilles'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+(S.v==='mfeuilles'?'/feuilles':'')+'$';
+  const inD=['dom','chap','cours','exos','annales','cartes','feuilles','codes','mfeuilles','partiel'].includes(S.v),inC=['chap','cours','exos','annales','cartes','feuilles','codes'].includes(S.v);
+  app.dataset.k=S.v==='cours'?'cours':(S.v==='exos'||S.v==='partiel'||S.v==='mfeuilles'||S.v==='codes')?'exos':(S.v==='dom'||S.v==='chap')?'dom':'other';
+  $('path').textContent=['depot','compte','admin','classement'].includes(S.v)?'~/'+S.v+'$':S.v==='grille'?'~/a'+S.y+'/notes$':'~'+(inD&&S.y!==null?'/a'+S.y:'')+(inD?'/'+S.d:'')+(inC?'/'+slug(CHAP().n):'')+(['cours','exos','annales','cartes','feuilles','codes'].includes(S.v)?'/'+S.v:'')+(S.v==='partiel'?'/partiel':'')+(S.v==='mfeuilles'?'/feuilles':'')+'$';
   $('nav').innerHTML=S.user?`<button class="${S.v==='home'?'on':''}" onclick="go('home')">Accueil${S.y!==null?' · '+YN[S.y]:''}</button>`
     +(S.y===null?[]:Object.keys(D)).map(k=>`<button class="dn d-${k}${inD&&S.d===k?' on':''}" onclick="go('dom','${k}')">${D[k]}</button>`).join('')
     :'';
@@ -2583,9 +2591,11 @@ async function annLoad(){
 }
 /* ===== Feuilles d'exos : évaluations composées par l'admin avec les générateurs ===== */
 const r2=v=>Math.round(v*100)/100;
-const fOf=cid=>(DB.fl||[]).filter(f=>f.chapitre_id===cid&&f.mode!=='partiel').sort((a,b)=>a.ordre-b.ordre);
-const fOfM=mid=>(DB.fl||[]).filter(f=>f.module_id===mid).sort((a,b)=>a.ordre-b.ordre);
+const fOf=cid=>(DB.fl||[]).filter(f=>f.chapitre_id===cid&&f.mode!=='partiel'&&!f.perso).sort((a,b)=>a.ordre-b.ordre);
+const fMine=f=>!!(f.perso&&S.user&&f.auteur_id===S.user.id);
+const fOfM=mid=>(DB.fl||[]).filter(f=>f.module_id===mid&&!f.perso).sort((a,b)=>a.ordre-b.ordre);
 const fMod=()=>S.v==='mfeuilles'?MODS.find(m=>m.id===S.fm):null;
+const fOfP=()=>{const m=fMod();return (DB.fl||[]).filter(f=>fMine(f)&&(m?f.module_id===m.id:(f.chapitre_id===CHAP().id&&f.mode!=='partiel'))).sort((a,b)=>a.ordre-b.ordre)};
 const fScope=()=>{const m=fMod();return m?fOfM(m.id):fOf(CHAP().id)};
 const secName=en=>en.nom||(CALC[en.gen]?CALC[en.gen].n:String(en.gen));
 const GALIAS={bestlim:'limites',normcalc:'normes'};
@@ -2673,7 +2683,7 @@ function fSheetHtml(){
 }
 function mfCard(m){
   const n=fOfM(m.id).filter(f=>f.publie||ed()).length;
-  return (n||ed())?`<div class="cards" style="margin-bottom:14px"><button class="card topic" style="border-left-color:#e0a040" onclick="S.fm='${m.id}';go('mfeuilles')"><h2>Feuilles de partiel du module</h2><p>Sujets chronométrés tirés au hasard sur tout le module${n?' ('+n+')':''}.</p></button></div>`:'';
+  return `<div class="cards" style="margin-bottom:14px"><button class="card topic" style="border-left-color:#e0a040" onclick="S.fm='${m.id}';go('mfeuilles')"><h2>Feuilles de partiel du module</h2><p>Sujets chronométrés tirés au hasard sur tout le module${n?' ('+n+')':''}, ou les tiens.</p></button></div>`;
 }
 function feuillesView(){
   if(S.fe)return fSheetHtml();
@@ -2686,16 +2696,16 @@ function feuillesView(){
     return `<li><span><button class="lnk" onclick="fStart('${f.id}')">${esc(f.titre)}</button> <span class="note" style="margin:0">${ne} ${f.mode==='partiel'?'section':'exo'}${ne>1?'s':''} · /${f1(Number(f.total))}${f.mode==='partiel'&&f.duree_min?' · '+f.duree_min+' min':''}${f.publie?'':' · brouillon (invisible des membres)'}</span></span>
     <span class="row" style="margin:0">${n?`<span class="badge">meilleure : ${f1(n.best)} / ${f1(Number(n.max))}</span>`:''}
     ${ed()?`<button class="btn" onclick="fToggle('${f.id}')">${f.publie?'Masquer aux membres':'Publier'}</button><button class="btn" onclick="fMove('${f.id}',-1)" title="Monter">↑</button><button class="btn" onclick="fMove('${f.id}',1)" title="Descendre">↓</button><button class="btn" onclick="fEdit('${f.id}')">Modifier</button>`:''}</span></li>`}).join('')+'</ul>'
-   :'<div class="empty">Aucune feuille pour le moment.</div>')+fEditor();
+   :'<div class="empty">Aucune feuille officielle pour le moment.</div>')+fEditor()+fPerso();
 }
 async function fToggle(id){
   const f=DB.fl.find(x=>x.id===id),r=await sb.from('feuilles').update({publie:!f.publie}).eq('id',id).select();
   if(refused(r))return flash(refused(r),1);
   await feuillesLoad();flash(f.publie?'Feuille masquée aux membres.':'Feuille publiée : les membres la voient.');
 }
-function fNew(){
+function fNew(perso){
   const m=fMod();
-  S.fd={id:null,mode:m?'partiel':'fixe',titre:'',description:'',total:20,duree_min:m?90:'',publie:true,entrees:[]};render();
+  S.fd={id:null,perso:!!perso,mode:m?'partiel':'fixe',titre:'',description:'',total:20,duree_min:m?90:'',publie:!perso,entrees:[]};render();
 }
 function fEdit(id){const f=DB.fl.find(x=>x.id===id);S.fd=Object.assign({},f,{mode:f.mode||'fixe',entrees:(f.entrees||[]).map(e=>Object.assign({},e,e.gens?{gens:e.gens.slice()}:{})),description:f.description||'',duree_min:f.duree_min||''});S.cfx=null;render()}
 const fdSet=(k,v)=>{S.fd[k]=v};
@@ -2706,8 +2716,8 @@ function fdAdd(){const g=$('fd_g').value;if(!g)return;S.fd.entrees.push({gen:g,n
 function fdAddSec(){S.fd.entrees.push({nom:'Section '+(S.fd.entrees.length+1),gens:fPool(),nb:1,pts:4});render()}
 function fdMove(i,d){const E=S.fd.entrees,j=i+d;if(j<0||j>=E.length)return;[E[i],E[j]]=[E[j],E[i]];render()}
 function fdDel(i){S.fd.entrees.splice(i,1);render()}
-function fEditor(){
-  if(!ed())return '';
+function fFormHtml(){
+  if(!S.fd)return '';
   const d=S.fd,m=fMod(),sum=d?d.entrees.reduce((a,e)=>a+(Number(e.pts)||0),0):0,part=d&&d.mode==='partiel';
   const pool=d&&part?fPool():[];
   const rows=!d?'':part?d.entrees.map((e,i)=>`<div class="edb" style="margin:8px 0"><div class="edr"><b>${i+1}.</b>
@@ -2720,11 +2730,11 @@ function fEditor(){
      <label>Questions<input type="number" min="1" max="30" value="${e.n}" oninput="fdEn(${i},'n',this.value)" style="width:80px"></label>
      <label>Points<input type="number" min="0.5" step="0.5" value="${e.pts}" oninput="fdEn(${i},'pts',this.value)" style="width:80px"></label>
      <button class="btn" onclick="fdMove(${i},-1)" title="Monter">↑</button><button class="btn" onclick="fdMove(${i},1)" title="Descendre">↓</button><button class="btn" onclick="fdDel(${i})" title="Retirer">✕</button></div>`).join('');
-  return `<div class="edb"><h4>${m?'Feuilles de partiel du module':"Feuilles d'exos"}</h4><div class="edr"><button class="btn" onclick="fNew()">${m?'Nouveau partiel':'Nouvelle feuille'}</button></div>`+(d?`
+  return (d?`
    <div class="edr"><label>Titre<input type="text" maxlength="200" value="${esc(d.titre)}" oninput="fdSet('titre',this.value)" style="min-width:280px"></label>
     <label>Note totale<input type="number" min="1" step="0.5" value="${esc(d.total)}" oninput="fdSet('total',this.value)" style="width:90px"></label>
     <label>Durée${part?'':' conseillée'} (min)<input type="number" min="1" value="${esc(d.duree_min)}" oninput="fdSet('duree_min',this.value)" style="width:90px"></label>
-    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" ${d.publie?'checked':''} onchange="fdSet('publie',this.checked)"> visible des membres</label></div>
+    ${d.perso?'':`<label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" ${d.publie?'checked':''} onchange="fdSet('publie',this.checked)"> visible des membres</label>`}</div>
    <div class="edr"><label>Consigne (facultatif)<textarea maxlength="2000" oninput="fdSet('description',this.value)" style="min-height:50px">${esc(d.description)}</textarea></label></div>
    <h4 style="margin-top:10px">${part?'Sections du sujet':'Exercices de la feuille'}</h4>
    ${rows||`<div class="note" style="margin:0">${part?'Aucune section : ajoutes-en une ci-dessous.':'Aucun exercice : ajoutes-en un ci-dessous.'}</div>`}
@@ -2732,7 +2742,21 @@ function fEditor(){
    :`<div class="edr"><label>Ajouter un exercice<select id="fd_g"><option value="">— générateur —</option>${CALC_KEYS.map(k=>`<option value="${k}">${esc(CALC[k].n)}</option>`).join('')}</select></label><button class="btn" onclick="fdAdd()">Ajouter</button></div>`}
    <p class="note">${part?'Chaque section tire « Exos tirés » exercices au hasard parmi ses générateurs (ceux du module par défaut), avec un nouveau tirage à chaque tentative. ':'« Questions » = nombre de questions (par ex. de limites ou de calculs) tirées dans le générateur. '}Les points sont des poids : leur somme (${f1(sum)}) est ramenée à la note totale (${f1(Number(d.total)||0)}).</p>
    <div class="edr"><button class="btn" onclick="fSave()">Enregistrer</button>${d.id?`<button class="btn" onclick="fStart('${d.id}')">Aperçu</button>`:''}<button class="btn" onclick="S.fd=null;render()">Fermer</button><span class="sp"></span>
-    ${d.id?delBtn('f'+d.id,"fDelete('"+d.id+"')",'Supprimer'):''}</div>`:'')+`</div>`;
+    ${d.id?delBtn('f'+d.id,"fDelete('"+d.id+"')",'Supprimer'):''}</div>`:'');
+}
+function fEditor(){
+  if(!ed())return '';
+  const m=fMod();
+  return `<div class="edb"><h4>${m?'Feuilles de partiel du module (officielles)':"Feuilles d'exos (officielles)"}</h4><div class="edr"><button class="btn" onclick="fNew()">${m?'Nouveau partiel':'Nouvelle feuille'}</button></div>${S.fd&&!S.fd.perso?fFormHtml():''}</div>`;
+}
+function fPerso(){
+  if(!S.user)return '';
+  const m=fMod(),L=fOfP();
+  return `<section class="panel" style="margin-top:20px"><h3>Mes feuilles</h3><p class="note" style="margin:0 0 10px">Compose ta propre ${m?'feuille de partiel':'feuille'} avec les générateurs de ton choix. Elle n'est visible que par toi.</p>`
+  +(L.length?'<ul class="q">'+L.map(f=>{const n=(S.fn||{})[f.id],ne=(f.entrees||[]).length;
+    return `<li><span><button class="lnk" onclick="fStart('${f.id}')">${esc(f.titre)}</button> <span class="note" style="margin:0">${ne} ${f.mode==='partiel'?'section':'exo'}${ne>1?'s':''} · /${f1(Number(f.total))}${f.mode==='partiel'&&f.duree_min?' · '+f.duree_min+' min':''}</span></span>
+    <span class="row" style="margin:0">${n?`<span class="badge">meilleure : ${f1(n.best)} / ${f1(Number(n.max))}</span>`:''}<button class="btn" onclick="fEdit('${f.id}')">Modifier</button>${delBtn('f'+f.id,"fDelete('"+f.id+"')",'Supprimer')}</span></li>`}).join('')+'</ul>':'')
+  +`<div class="edr"><button class="btn" onclick="fNew(true)">${m?'Nouveau partiel perso':'Nouvelle feuille perso'}</button></div>${S.fd&&S.fd.perso?fFormHtml():''}</section>`;
 }
 async function fSave(){
   const d=S.fd,titre=(d.titre||'').trim(),part=d.mode==='partiel';
@@ -2740,12 +2764,12 @@ async function fSave(){
   if(!d.entrees.length)return flash(part?'Ajoute au moins une section.':'Ajoute au moins un exercice.',1);
   if(d.entrees.some(e=>!(e.pts>0)||(part?!(e.nb>=1)||!(e.gens||[]).length||!(e.nom||'').trim():!(e.n>=1))))return flash(part?'Chaque section : un nom, au moins 1 exo, au moins 1 générateur et des points > 0.':'Chaque exercice : au moins 1 question et des points > 0.',1);
   const tot=Number(d.total);if(!(tot>0))return flash('Note totale invalide.',1);
-  const row={titre:titre.slice(0,200),description:(d.description||'').trim().slice(0,2000)||null,total:tot,duree_min:d.duree_min?Math.round(Number(d.duree_min)):null,publie:!!d.publie,mode:part?'partiel':'fixe',
+  const row={titre:titre.slice(0,200),description:(d.description||'').trim().slice(0,2000)||null,total:tot,duree_min:d.duree_min?Math.round(Number(d.duree_min)):null,publie:d.perso?false:!!d.publie,mode:part?'partiel':'fixe',
     entrees:d.entrees.map(e=>part?{nom:e.nom.trim().slice(0,120),gens:e.gens.slice(),nb:Math.round(e.nb),pts:Number(e.pts)}:{gen:e.gen,n:Math.round(e.n),pts:Number(e.pts)})};
   const m=fMod();
   const r=d.id?await sb.from('feuilles').update(row).eq('id',d.id).select()
-    :await sb.from('feuilles').insert(Object.assign(row,m?{module_id:m.id,chapitre_id:null}:{chapitre_id:CHAP().id},{ordre:fScope().length+1})).select();
-  if(refused(r))return flash(/relation|feuilles|column/i.test(refused(r))?"Base pas à jour : relance maj-feuilles.sql dans Supabase.":refused(r),1);
+    :await sb.from('feuilles').insert(Object.assign(row,m?{module_id:m.id,chapitre_id:null}:{chapitre_id:CHAP().id},d.perso?{perso:true,auteur_id:S.user.id,ordre:fOfP().length+1}:{ordre:fScope().length+1})).select();
+  if(refused(r))return flash(/relation|feuilles|column|perso|auteur/i.test(refused(r))?"Base pas à jour : relance maj-feuilles.sql puis maj-feuilles-perso.sql dans Supabase.":refused(r),1);
   S.fd=null;await feuillesLoad();flash('Feuille enregistrée.');
 }
 async function fDelete(id){
@@ -2768,6 +2792,203 @@ async function typeMove(id,d){
   const bad=rs.find(r=>r&&refused(r));if(bad)return flash(refused(bad),1);
   S.topic=null;await loadData();render();
 }
+/* ===== Exos de code : C++ compilé dans le navigateur (clang en WebAssembly, dossier cpp/) ===== */
+const CPP='cpp/';
+let CPPW=null,CPPN=0;const CPPQ={};
+function cppFail(msg){Object.keys(CPPQ).forEach(k=>{const q=CPPQ[k];delete CPPQ[k];q.res({ok:false,err:msg})});if(CPPW){try{CPPW.terminate()}catch(e){}CPPW=null}}
+function cppWorker(){
+  if(CPPW)return CPPW;
+  CPPW=new Worker(CPP+'worker.js',{type:'module'});
+  CPPW.onmessage=e=>{const m=e.data,q=CPPQ[m.id];if(!q)return;if(m.type==='progress'){q.prog(m);return}delete CPPQ[m.id];q.res(m)};
+  CPPW.onerror=()=>cppFail("Le compilateur n'a pas pu démarrer. Vérifie que le dossier cpp/ est bien présent sur le site.");
+  return CPPW;
+}
+function cppCompile(code,prog){
+  return new Promise(res=>{
+    const id=++CPPN;let t;const arm=()=>{clearTimeout(t);t=setTimeout(()=>cppFail('La compilation prend trop de temps : réessaie.'),120000)};
+    CPPQ[id]={res:m=>{clearTimeout(t);res(m)},prog:p=>{arm();prog&&prog(p)}};arm();
+    try{cppWorker().postMessage({id,code})}catch(e){clearTimeout(t);delete CPPQ[id];res({ok:false,err:'Le navigateur ne peut pas lancer le compilateur ('+(e.message||e)+').'})}
+  });
+}
+function cppRun(wasm,stdin){
+  return new Promise(res=>{
+    let done=false,w=null;
+    const fin=r=>{if(done)return;done=true;clearTimeout(t);try{w&&w.terminate()}catch(e){}res(r)};
+    const t=setTimeout(()=>fin({out:'',err:'',code:0,timeout:true}),5000);
+    try{w=new Worker(CPP+'run.js');w.onmessage=e=>fin(e.data);w.onerror=()=>fin({out:'',err:"Erreur d'exécution.",code:1,crash:true});w.postMessage({wasm,stdin:stdin||''})}
+    catch(e){fin({out:'',err:String(e.message||e),code:1,crash:true})}
+  });
+}
+const CW={};
+const cwOf=id=>CW[id]||(CW[id]={code:null,stdin:'',hint:0,res:null,busy:false,msg:''});
+const exoOf=id=>(DB.ec||[]).find(x=>x.id===id);
+const codesOf=cid=>(DB.ec||[]).filter(x=>x.chapitre_id===cid&&(x.publie||ed())).sort((a,b)=>a.ordre-b.ordre);
+const codeSaved=id=>{try{return localStorage.getItem('ros_code_'+id)}catch(e){return null}};
+const codeStore=(id,v)=>{try{localStorage.setItem('ros_code_'+id,v)}catch(e){}};
+function cwCode(e){const w=cwOf(e.id);if(w.code===null){const s=codeSaved(e.id);w.code=s!==null?s:(e.code_depart||'')}return w}
+const normOut=s=>String(s||'').replace(/\r/g,'').split('\n').map(l=>l.replace(/\s+$/,'')).join('\n').replace(/\n+$/,'');
+function mdLite(s){
+  return String(s||'').split(/```[a-z+]*\n?/).map((p,i)=>i%2?`<pre class="cout">${esc(p.replace(/\n$/,''))}</pre>`
+    :esc(p).replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')).join('');
+}
+async function codeLoad(){
+  DB.ecr=DB.ecr||{};
+  try{
+    const r=await sb.from('exos_code').select('*').order('ordre');
+    if(r.error){DB.ec=[];S.cerr=true;return}
+    S.cerr=false;DB.ec=r.data||[];
+    const n=await sb.from('exos_code_res').select('exo_id,reussi').eq('user_id',S.user.id);
+    DB.ecr={};if(!n.error)(n.data||[]).forEach(x=>{if(x.reussi)DB.ecr[x.exo_id]=true});
+  }catch(e){DB.ec=DB.ec||[]}
+}
+function codeOpen(id){S.ce=id;cwCode(exoOf(id));render();window.scrollTo(0,0)}
+function cwSet(id,v){cwOf(id).code=v;codeStore(id,v)}
+function cwIn(id,v){cwOf(id).stdin=v}
+function codeReset(){const e=exoOf(S.ce);if(!e)return;if(!confirm('Revenir au code de départ ? Ton code actuel sera perdu.'))return;const w=cwOf(e.id);w.code=e.code_depart||'';codeStore(e.id,w.code);w.res=null;render()}
+function codeHint(){const e=exoOf(S.ce),w=e&&cwOf(e.id);if(!e||w.hint>=(e.indices||[]).length)return;w.hint++;render()}
+function cTab(ev){
+  if(ev.isComposing||ev.ctrlKey||ev.altKey||ev.metaKey)return;
+  const t=ev.target;
+  if(ev.key==='Tab'&&!ev.shiftKey){ev.preventDefault();const s=t.selectionStart,e=t.selectionEnd;t.value=t.value.slice(0,s)+'    '+t.value.slice(e);t.selectionStart=t.selectionEnd=s+4;t.dispatchEvent(new Event('input'))}
+  else if(ev.key==='Enter'&&!ev.shiftKey){
+    ev.preventDefault();const s=t.selectionStart,e=t.selectionEnd,v=t.value,ls=v.lastIndexOf('\n',s-1)+1,line=v.slice(ls,s),
+      ind=line.match(/^[ \t]*/)[0]+(/\{\s*$/.test(line)?'    ':''),ins='\n'+ind;
+    t.value=v.slice(0,s)+ins+v.slice(e);t.selectionStart=t.selectionEnd=s+ins.length;t.dispatchEvent(new Event('input'));
+  }
+}
+async function codeDone(id){
+  DB.ecr=DB.ecr||{};if(DB.ecr[id])return;DB.ecr[id]=true;
+  if(sb&&S.user&&!S.edit){try{await sb.from('exos_code_res').upsert({user_id:S.user.id,exo_id:id,reussi:true,updated_at:new Date().toISOString()},{onConflict:'user_id,exo_id'})}catch(x){}}
+}
+async function codeCheck(mode){
+  const e=exoOf(S.ce);if(!e)return;const w=cwCode(e);if(w.busy)return;
+  if(!w.code.trim()){w.res={compErr:'Le code est vide.'};return render()}
+  w.busy=true;w.res=null;w.msg='Chargement du compilateur…';render();
+  const upd=t=>{w.msg=t;const el=document.getElementById('cpst');if(el)el.textContent=t};
+  const c=await cppCompile(w.code,p=>upd(p.total&&p.done<p.total?'Téléchargement du compilateur : '+Math.round(100*p.done/p.total)+' % (une seule fois, ensuite c\'est rapide)':'Compilation…'));
+  if(!c.ok){w.busy=false;w.res={compErr:c.err};render();return}
+  upd('Exécution…');
+  if(mode==='run'){const r=await cppRun(c.wasm,w.stdin);w.res={mode:'run',warn:c.warn,run:r}}
+  else{
+    const rs=[];
+    for(const t of (e.tests||[])){
+      const r=await cppRun(c.wasm,t.entree||'');
+      rs.push({t,r,ok:!r.timeout&&!r.crash&&normOut(r.out)===normOut(t.sortie)});
+    }
+    w.res={mode:'check',warn:c.warn,tests:rs};
+    if(rs.length&&rs.every(x=>x.ok))codeDone(e.id);
+  }
+  w.busy=false;render();
+  const el=document.getElementById('cres');if(el)el.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function codeResHtml(e,w){
+  if(w.busy)return `<section class="panel" style="margin-top:14px"><p class="note" style="margin:0" id="cpst" role="status">${esc(w.msg)}</p></section>`;
+  const R=w.res;if(!R)return '';
+  const warn=R.warn&&R.warn.trim()?`<details style="margin-top:8px"><summary>Avertissements du compilateur</summary><pre class="cout">${esc(R.warn.trim())}</pre></details>`:'';
+  if(R.compErr!==undefined)return `<section class="panel" style="margin-top:14px"><h3>Erreur de compilation</h3><pre class="cout ko">${esc(R.compErr)}</pre><p class="note" style="margin:6px 0 0">Lis le premier message : il indique la ligne (« main.cpp:12:5 ») et la cause. Les suivants sont souvent des conséquences.</p></section>`;
+  if(R.mode==='run'){const r=R.run;
+    return `<section class="panel" style="margin-top:14px"><h3>Sortie du programme</h3>${r.timeout?'<p class="bad">Le programme a dépassé 5 secondes : boucle infinie ?</p>':''}<pre class="cout">${esc(r.out)||'<aucune sortie>'}</pre>${r.err?`<pre class="cout err">${esc(r.err)}</pre>`:''}${r.cut?'<p class="note">Sortie tronquée.</p>':''}${warn}</section>`}
+  const T=R.tests,okn=T.filter(x=>x.ok).length,all=T.length&&okn===T.length;
+  return `<section class="panel" style="margin-top:14px"><h3>${all?'✓ Tous les tests sont réussis':'Tests : '+okn+' / '+T.length+' réussis'}</h3>
+   ${T.map((x,i)=>{const vis=x.t.visible!==false;
+     return `<div class="ctest ${x.ok?'ok':'ko'}"><b>${x.ok?'✓':'✗'} Test ${i+1}${vis?'':' (caché)'}</b>${x.r.timeout?' <span class="bad">· trop long (5 s) : boucle infinie ?</span>':''}${x.r.crash?' <span class="bad">· le programme a planté</span>':''}
+      ${vis||!x.ok?`${x.t.entree?`<div class="note" style="margin:6px 0 0">Entrée</div><pre class="cout">${esc(x.t.entree)}</pre>`:''}
+      ${vis?`<div class="note" style="margin:6px 0 0">Attendu</div><pre class="cout">${esc(x.t.sortie)||'<rien>'}</pre>`:''}
+      <div class="note" style="margin:6px 0 0">Obtenu</div><pre class="cout${x.ok?'':' ko'}">${esc(x.r.out)||'<aucune sortie>'}</pre>${x.r.err?`<pre class="cout err">${esc(x.r.err)}</pre>`:''}`:''}</div>`}).join('')}${warn}</section>`;
+}
+function codeExHtml(e){
+  const w=cwCode(e),ind=e.indices||[],done=DB.ecr&&DB.ecr[e.id],dis=w.busy?' disabled':'';
+  return `<div class="row"><button class="btn" onclick="S.ce=null;render()">‹ Exos de code</button></div>
+  <h1>${done?'✓ ':''}${esc(e.titre)}</h1>
+  <section class="panel"><h3>Énoncé</h3><div class="enonce">${mdLite(e.enonce)||'<span class="note">Pas d\'énoncé.</span>'}</div></section>
+  <section class="panel" style="margin-top:14px"><h3>Ton code (C++)</h3>
+   <textarea class="cedit" id="cedit" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Ton code C++" oninput="cwSet('${e.id}',this.value)" onkeydown="cTab(event)">\n${esc(w.code)}</textarea>
+   <div class="row" style="margin-top:10px"><button class="btn" onclick="codeCheck('check')"${dis}>Vérifier</button><button class="btn" onclick="codeCheck('run')"${dis}>Exécuter</button>
+    <button class="btn" onclick="codeHint()"${ind.length&&w.hint<ind.length?'':' disabled'}>Demander un indice${ind.length?' ('+w.hint+'/'+ind.length+')':''}</button><span class="sp"></span><button class="btn" onclick="codeReset()">Code de départ</button></div>
+   <details style="margin-top:8px"${w.stdin?' open':''}><summary>Entrée du programme (pour « Exécuter »)</summary><textarea class="cin" spellcheck="false" aria-label="Entrée du programme" oninput="cwIn('${e.id}',this.value)">${esc(w.stdin)}</textarea></details>
+   <p class="note" style="margin:8px 0 0">Le code est compilé et exécuté sur ton ordinateur (aucun envoi). Il est gardé automatiquement dans ce navigateur. Les exceptions C++ ne sont pas disponibles.</p></section>
+  ${w.hint?`<section class="panel" style="margin-top:14px"><h3>Indices</h3>${ind.slice(0,w.hint).map((h,i)=>`<p><b>Indice ${i+1}.</b> ${mdLite(h)}</p>`).join('')}</section>`:''}
+  <div id="cres">${codeResHtml(e,w)}</div>`;
+}
+function codesView(){
+  const c=CHAP();
+  if(S.ce){const e=exoOf(S.ce);if(e)return codeExHtml(e);S.ce=null}
+  const L=codesOf(c.id);
+  return `<div class="row"><button class="btn" onclick="go('chap')">‹ ${c.n}</button></div>
+  <h1>Exos de code – ${c.n}</h1>
+  <p class="lead">Écris ton programme en C++, compile-le et teste-le directement dans le navigateur. « Vérifier » lance les tests de l'exercice ; si tu bloques, demande un indice.</p>`
+  +(DB.ec===undefined?'<div class="empty">Chargement…</div>'
+   :S.cerr?'<div class="empty">Les exercices de code ne sont pas encore activés'+(ed()?' : lance maj-exos-code.sql dans Supabase.':'.')+'</div>'
+   :L.length?'<div class="cards">'+L.map(e=>`<button class="card topic" style="border-left-color:#4fb477" onclick="codeOpen('${e.id}')"><h2>${DB.ecr&&DB.ecr[e.id]?'✓ ':''}${esc(e.titre)}</h2><p>${(e.tests||[]).length} test${(e.tests||[]).length>1?'s':''}${(e.indices||[]).length?' · '+e.indices.length+' indice'+(e.indices.length>1?'s':''):''}${e.publie?'':' · brouillon'}</p></button>`).join('')+'</div>'
+   :'<div class="empty">Aucun exercice de code pour le moment.</div>')+codeEditor();
+}
+/* éditeur admin des exercices de code */
+const cefSet=(k,v)=>{S.cef[k]=v};
+const cefT=(i,k,v)=>{S.cef.tests[i][k]=v};
+function cefNew(){S.cef={id:null,titre:'',enonce:'',code_depart:'#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n',tests:[{entree:'',sortie:'',visible:true}],indices:'',publie:true,sol:''};render()}
+function cefEdit(id){const e=exoOf(id);S.cef={id,titre:e.titre,enonce:e.enonce||'',code_depart:e.code_depart||'',tests:(e.tests||[]).map(t=>({entree:t.entree||'',sortie:t.sortie||'',visible:t.visible!==false})),indices:(e.indices||[]).join('\n---\n'),publie:!!e.publie,sol:''};S.cfx=null;render()}
+function cefTAdd(){S.cef.tests.push({entree:'',sortie:'',visible:true});render()}
+function cefTDel(i){S.cef.tests.splice(i,1);render()}
+async function cefFill(){
+  const d=S.cef;if(!d.sol.trim())return flash('Colle d\'abord une solution de référence.',1);
+  flash('Compilation de la solution…');
+  const c=await cppCompile(d.sol,null);if(!c.ok)return flash('La solution ne compile pas : '+c.err.slice(0,400),1);
+  for(const t of d.tests){const r=await cppRun(c.wasm,t.entree||'');if(r.timeout||r.crash)return flash('La solution a planté ou dépassé 5 s sur un test.',1);t.sortie=normOut(r.out)}
+  flash('Sorties attendues remplies avec la solution. Relis-les avant d\'enregistrer.');
+}
+async function cefSave(){
+  const d=S.cef,titre=(d.titre||'').trim();
+  if(!titre)return flash("Donne un titre à l'exercice.",1);
+  const tests=d.tests.map(t=>({entree:t.entree||'',sortie:normOut(t.sortie),visible:!!t.visible}));
+  if(!tests.length)return flash('Ajoute au moins un test.',1);
+  const indices=(d.indices||'').split(/\n-{3,}[ \t]*\n/).map(s=>s.trim()).filter(Boolean).slice(0,10);
+  const row={titre:titre.slice(0,200),enonce:(d.enonce||'').slice(0,8000),code_depart:(d.code_depart||'').slice(0,8000),tests,indices,publie:!!d.publie};
+  const r=d.id?await sb.from('exos_code').update(row).eq('id',d.id).select()
+    :await sb.from('exos_code').insert(Object.assign(row,{chapitre_id:CHAP().id,ordre:codesOf(CHAP().id).length+1})).select();
+  if(refused(r))return flash(/relation|exos_code|column/i.test(refused(r))?'Base pas à jour : lance maj-exos-code.sql dans Supabase.':refused(r),1);
+  S.cef=null;if(d.id){const w=cwOf(d.id);w.res=null}await codeLoad();flash('Exercice enregistré.');
+}
+async function cefDel(id){
+  if(S.cfx!=='x'+id){S.cfx='x'+id;return render()}
+  S.cfx=null;const r=await sb.from('exos_code').delete().eq('id',id).select('id');
+  if(r.error)return flash(fr(r.error.message),1);
+  S.cef=null;await codeLoad();flash('Exercice supprimé.');
+}
+async function cefPub(id){
+  const e=exoOf(id),r=await sb.from('exos_code').update({publie:!e.publie}).eq('id',id).select();
+  if(refused(r))return flash(refused(r),1);
+  await codeLoad();flash(e.publie?'Exercice masqué aux membres.':'Exercice publié.');
+}
+async function cefMove(id,d){
+  const L=codesOf(CHAP().id),i=L.findIndex(x=>x.id===id),j=i+d;if(i<0||j<0||j>=L.length)return;
+  [L[i],L[j]]=[L[j],L[i]];
+  const rs=await Promise.all(L.map((x,k)=>x.ordre===k+1?null:sb.from('exos_code').update({ordre:k+1}).eq('id',x.id).select()));
+  const bad=rs.find(r=>r&&refused(r));if(bad)return flash(refused(bad),1);
+  await codeLoad();render();
+}
+function codeEditor(){
+  if(!ed())return '';
+  const d=S.cef,L=codesOf(CHAP().id);
+  return `<div class="edb"><h4>Exercices de code du chapitre</h4>
+   ${L.map(e=>`<div class="edr"><span style="min-width:220px"><b>${esc(e.titre)}</b> <span class="note" style="margin:0">${e.publie?'':'· brouillon'}</span></span>
+     <button class="btn" onclick="cefMove('${e.id}',-1)" title="Monter">↑</button><button class="btn" onclick="cefMove('${e.id}',1)" title="Descendre">↓</button>
+     <button class="btn" onclick="cefEdit('${e.id}')">Modifier</button><button class="btn" onclick="cefPub('${e.id}')">${e.publie?'Masquer':'Publier'}</button><span class="sp"></span>${delBtn('x'+e.id,"cefDel('"+e.id+"')",'Supprimer')}</div>`).join('')||'<div class="note" style="margin:0">Aucun exercice.</div>'}
+   <div class="edr" style="border-top:1px solid var(--line);padding-top:12px"><button class="btn" onclick="cefNew()">Nouvel exercice</button></div>`
+  +(d?`<div class="edb" style="margin-top:10px"><div class="edr"><label style="flex:1">Titre<input type="text" maxlength="200" value="${esc(d.titre)}" oninput="cefSet('titre',this.value)" style="width:100%"></label>
+     <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" ${d.publie?'checked':''} onchange="cefSet('publie',this.checked)"> visible des membres</label></div>
+    <div class="edr"><label style="flex:1">Énoncé (\`code\` et blocs \`\`\` acceptés)<textarea style="min-height:120px" oninput="cefSet('enonce',this.value)">${esc(d.enonce)}</textarea></label></div>
+    <div class="edr"><label style="flex:1">Code de départ<textarea class="cin" style="min-height:160px" spellcheck="false" onkeydown="cTab(event)" oninput="cefSet('code_depart',this.value)">${esc(d.code_depart)}</textarea></label></div>
+    <h4 style="margin-top:10px">Tests</h4>
+    ${d.tests.map((t,i)=>`<div class="edr"><b>${i+1}.</b><label>Entrée (stdin)<textarea class="cin" style="min-height:60px;width:220px" spellcheck="false" oninput="cefT(${i},'entree',this.value)">${esc(t.entree)}</textarea></label>
+      <label>Sortie attendue<textarea class="cin" style="min-height:60px;width:280px" spellcheck="false" oninput="cefT(${i},'sortie',this.value)">${esc(t.sortie)}</textarea></label>
+      <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" ${t.visible?'checked':''} onchange="cefT(${i},'visible',this.checked)"> visible</label><button class="btn" onclick="cefTDel(${i})" title="Retirer">✕</button></div>`).join('')}
+    <div class="edr"><button class="btn" onclick="cefTAdd()">Ajouter un test</button></div>
+    <div class="edr"><label style="flex:1">Solution de référence (non enregistrée) : sert à remplir les sorties attendues<textarea class="cin" style="min-height:120px" spellcheck="false" onkeydown="cTab(event)" oninput="cefSet('sol',this.value)">${esc(d.sol)}</textarea></label></div>
+    <div class="edr"><button class="btn" onclick="cefFill()">Remplir les sorties attendues avec la solution</button></div>
+    <div class="edr"><label style="flex:1">Indices (sépare-les par une ligne contenant seulement ---)<textarea style="min-height:110px" oninput="cefSet('indices',this.value)">${esc(d.indices)}</textarea></label></div>
+    <div class="edr"><button class="btn" onclick="cefSave()">Enregistrer</button><button class="btn" onclick="S.cef=null;render()">Fermer</button></div></div>`:'')+`</div>`;
+}
+
 /* ===== Admin : bibliothèque (où se trouve chaque contenu publié) ===== */
 async function admReplace(id,inp){
   const f=inp.files[0];if(!f)return;const d=DB.docs.find(x=>x.id===id);
@@ -2795,7 +3016,7 @@ function admBiblio(){
     <button class="btn danger${S.cfd===d.id?' go':''}" onclick="admDelete('${d.id}')">${S.cfd===d.id?'Confirmer : supprimer':'Supprimer'}</button>${S.cfd===d.id?`<button class="btn" onclick="S.cfd=null;render()">Annuler</button>`:''}</span>
     ${S.pvId===d.id?`<div style="width:100%">${pvHtml(d)}</div>`:''}</li>`;
   const chBlock=(c,pre)=>{
-    const cd=docs.filter(d=>d.chapitre_id===c.id),cf=fl.filter(f=>f.chapitre_id===c.id).sort((a,b)=>a.ordre-b.ordre);
+    const cd=docs.filter(d=>d.chapitre_id===c.id),cf=fl.filter(f=>!f.perso&&f.chapitre_id===c.id).sort((a,b)=>a.ordre-b.ordre);
     const parts=Object.keys(TY).map(t=>{const x=cd.filter(d=>d.type===t);return x.length?`<h4 style="margin:8px 0 2px;font-size:13px">${TY[t]} (${x.length})</h4><ul class="q">${x.map(docRow).join('')}</ul>`:''}).join('')
      +(cf.length?`<h4 style="margin:8px 0 2px;font-size:13px">Feuilles d'exos (${cf.length})</h4><ul class="q">${cf.map(fRowB).join('')}</ul>`:'');
     return det(pre+c.id,`${c.n} <span class="badge">${cd.length} doc${cd.length>1?'s':''}${cf.length?' · '+cf.length+' feuille'+(cf.length>1?'s':''):''}</span>`,parts||'<div class="note" style="margin:4px 0">Rien de publié ici.</div>');
@@ -2804,7 +3025,7 @@ function admBiblio(){
   [1,2,3,4,5].forEach(an=>{
     const inner=Object.keys(D).map(m=>{
       const mods=MODS.filter(x=>x.matiere===m&&x.an===an).sort((a,b)=>a.num-b.num),chs=CHAPS[m]||[];
-      const blocks=mods.map(md=>{const cs=chs.filter(c=>c.mid===md.id),mf=fl.filter(f=>f.module_id===md.id).sort((a,b)=>a.ordre-b.ordre);cs.forEach(c=>used.add(c.id));
+      const blocks=mods.map(md=>{const cs=chs.filter(c=>c.mid===md.id),mf=fl.filter(f=>!f.perso&&f.module_id===md.id).sort((a,b)=>a.ordre-b.ordre);cs.forEach(c=>used.add(c.id));
         return cs.length||mf.length?det('m'+md.id,`Module ${md.num}${md.raw?' · '+esc(md.raw):''} <span class="note" style="margin:0">promo ${md.pr}</span>`,(mf.length?`<h4 style="margin:8px 0 2px;font-size:13px">Feuilles de partiel du module (${mf.length})</h4><ul class="q">${mf.map(fRowB).join('')}</ul>`:'')+cs.map(c=>chBlock(c,'c')).join('')):''}).join('');
       const orph=chs.filter(c=>c.an===an&&!c.mid&&!used.has(c.id));orph.forEach(c=>used.add(c.id));
       const body=blocks+(orph.length?det('o'+m+an,'Autres chapitres',orph.map(c=>chBlock(c,'c')).join('')):'');
