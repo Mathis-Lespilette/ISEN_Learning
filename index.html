@@ -383,7 +383,7 @@ const views={
     <div class="cards">
       <button class="card topic" onclick="go('exos')"><h2>Exos</h2><p>Exercices types, du guidé à l'examen.</p></button>
       <button class="card topic" style="border-left-color:#3b6fd4" onclick="go('annales')"><h2>Annales</h2><p>Sujets avec ou sans correction.</p></button>
-      ${(S.d==='prog'||codesOf(c.id).length||ed())?`<button class="card topic" style="border-left-color:#4fb477" onclick="go('codes')"><h2>Exos de code</h2><p>Écris du C++, compile-le et teste-le directement ici.</p></button>`:''}
+      ${(S.d==='prog'||codesOf(c.id).length||ed())?`<button class="card topic" style="border-left-color:#4fb477" onclick="go('codes')"><h2>Exos de code</h2><p>Écris du C ou du C++, compile-le et teste-le directement ici.</p></button>`:''}
       <button class="card topic" style="border-left-color:#e0a040" onclick="go('feuilles')"><h2>Feuilles d'exos</h2><p>Évaluations notées : celles de l'admin et les tiennes.</p></button>
     </div>`;
   },
@@ -2803,11 +2803,11 @@ function cppWorker(){
   CPPW.onerror=()=>cppFail("Le compilateur n'a pas pu démarrer. Vérifie que le dossier cpp/ est bien présent sur le site.");
   return CPPW;
 }
-function cppCompile(code,prog){
+function cppCompile(code,prog,lang){
   return new Promise(res=>{
     const id=++CPPN;let t;const arm=()=>{clearTimeout(t);t=setTimeout(()=>cppFail('La compilation prend trop de temps : réessaie.'),120000)};
     CPPQ[id]={res:m=>{clearTimeout(t);res(m)},prog:p=>{arm();prog&&prog(p)}};arm();
-    try{cppWorker().postMessage({id,code})}catch(e){clearTimeout(t);delete CPPQ[id];res({ok:false,err:'Le navigateur ne peut pas lancer le compilateur ('+(e.message||e)+').'})}
+    try{cppWorker().postMessage({id,code,lang:lang||'cpp'})}catch(e){clearTimeout(t);delete CPPQ[id];res({ok:false,err:'Le navigateur ne peut pas lancer le compilateur ('+(e.message||e)+').'})}
   });
 }
 function cppRun(wasm,stdin){
@@ -2865,7 +2865,7 @@ async function codeCheck(mode){
   if(!w.code.trim()){w.res={compErr:'Le code est vide.'};return render()}
   w.busy=true;w.res=null;w.msg='Chargement du compilateur…';render();
   const upd=t=>{w.msg=t;const el=document.getElementById('cpst');if(el)el.textContent=t};
-  const c=await cppCompile(w.code,p=>upd(p.total&&p.done<p.total?'Téléchargement du compilateur : '+Math.round(100*p.done/p.total)+' % (une seule fois, ensuite c\'est rapide)':'Compilation…'));
+  const c=await cppCompile(w.code,p=>upd(p.total&&p.done<p.total?'Téléchargement du compilateur : '+Math.round(100*p.done/p.total)+' % (une seule fois, ensuite c\'est rapide)':'Compilation…'),e.langage||'cpp');
   if(!c.ok){w.busy=false;w.res={compErr:c.err};render();return}
   upd('Exécution…');
   if(mode==='run'){const r=await cppRun(c.wasm,w.stdin);w.res={mode:'run',warn:c.warn,run:r}}
@@ -2885,7 +2885,7 @@ function codeResHtml(e,w){
   if(w.busy)return `<section class="panel" style="margin-top:14px"><p class="note" style="margin:0" id="cpst" role="status">${esc(w.msg)}</p></section>`;
   const R=w.res;if(!R)return '';
   const warn=R.warn&&R.warn.trim()?`<details style="margin-top:8px"><summary>Avertissements du compilateur</summary><pre class="cout">${esc(R.warn.trim())}</pre></details>`:'';
-  if(R.compErr!==undefined)return `<section class="panel" style="margin-top:14px"><h3>Erreur de compilation</h3><pre class="cout ko">${esc(R.compErr)}</pre><p class="note" style="margin:6px 0 0">Lis le premier message : il indique la ligne (« main.cpp:12:5 ») et la cause. Les suivants sont souvent des conséquences.</p></section>`;
+  if(R.compErr!==undefined)return `<section class="panel" style="margin-top:14px"><h3>Erreur de compilation</h3><pre class="cout ko">${esc(R.compErr)}</pre><p class="note" style="margin:6px 0 0">Lis le premier message : il indique la ligne (« main.${e.langage==='c'?'c':'cpp'}:12:5 » = ligne 12, colonne 5) et la cause. Les suivants sont souvent des conséquences.</p></section>`;
   if(R.mode==='run'){const r=R.run;
     return `<section class="panel" style="margin-top:14px"><h3>Sortie du programme</h3>${r.timeout?'<p class="bad">Le programme a dépassé 5 secondes : boucle infinie ?</p>':''}<pre class="cout">${esc(r.out)||'<aucune sortie>'}</pre>${r.err?`<pre class="cout err">${esc(r.err)}</pre>`:''}${r.cut?'<p class="note">Sortie tronquée.</p>':''}${warn}</section>`}
   const T=R.tests,okn=T.filter(x=>x.ok).length,all=T.length&&okn===T.length;
@@ -2901,12 +2901,12 @@ function codeExHtml(e){
   return `<div class="row"><button class="btn" onclick="S.ce=null;render()">‹ Exos de code</button></div>
   <h1>${done?'✓ ':''}${esc(e.titre)}</h1>
   <section class="panel"><h3>Énoncé</h3><div class="enonce">${mdLite(e.enonce)||'<span class="note">Pas d\'énoncé.</span>'}</div></section>
-  <section class="panel" style="margin-top:14px"><h3>Ton code (C++)</h3>
-   <textarea class="cedit" id="cedit" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Ton code C++" oninput="cwSet('${e.id}',this.value)" onkeydown="cTab(event)">\n${esc(w.code)}</textarea>
+  <section class="panel" style="margin-top:14px"><h3>Ton code (${e.langage==='c'?'C':'C++'})</h3>
+   <textarea class="cedit" id="cedit" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Ton code" oninput="cwSet('${e.id}',this.value)" onkeydown="cTab(event)">\n${esc(w.code)}</textarea>
    <div class="row" style="margin-top:10px"><button class="btn" onclick="codeCheck('check')"${dis}>Vérifier</button><button class="btn" onclick="codeCheck('run')"${dis}>Exécuter</button>
     <button class="btn" onclick="codeHint()"${ind.length&&w.hint<ind.length?'':' disabled'}>Demander un indice${ind.length?' ('+w.hint+'/'+ind.length+')':''}</button><span class="sp"></span><button class="btn" onclick="codeReset()">Code de départ</button></div>
    <details style="margin-top:8px"${w.stdin?' open':''}><summary>Entrée du programme (pour « Exécuter »)</summary><textarea class="cin" spellcheck="false" aria-label="Entrée du programme" oninput="cwIn('${e.id}',this.value)">${esc(w.stdin)}</textarea></details>
-   <p class="note" style="margin:8px 0 0">Le code est compilé et exécuté sur ton ordinateur (aucun envoi). Il est gardé automatiquement dans ce navigateur. Les exceptions C++ ne sont pas disponibles.</p></section>
+   <p class="note" style="margin:8px 0 0">Le code est compilé et exécuté sur ton ordinateur (aucun envoi). Il est gardé automatiquement dans ce navigateur. ${e.langage==='c'?'':'Les exceptions C++ ne sont pas disponibles.'}</p></section>
   ${w.hint?`<section class="panel" style="margin-top:14px"><h3>Indices</h3>${ind.slice(0,w.hint).map((h,i)=>`<p><b>Indice ${i+1}.</b> ${mdLite(h)}</p>`).join('')}</section>`:''}
   <div id="cres">${codeResHtml(e,w)}</div>`;
 }
@@ -2916,7 +2916,7 @@ function codesView(){
   const L=codesOf(c.id);
   return `<div class="row"><button class="btn" onclick="go('chap')">‹ ${c.n}</button></div>
   <h1>Exos de code – ${c.n}</h1>
-  <p class="lead">Écris ton programme en C++, compile-le et teste-le directement dans le navigateur. « Vérifier » lance les tests de l'exercice ; si tu bloques, demande un indice.</p>`
+  <p class="lead">Écris ton programme en C ou en C++, compile-le et teste-le directement dans le navigateur. « Vérifier » lance les tests de l'exercice ; si tu bloques, demande un indice.</p>`
   +(DB.ec===undefined?'<div class="empty">Chargement…</div>'
    :S.cerr?'<div class="empty">Les exercices de code ne sont pas encore activés'+(ed()?' : lance maj-exos-code.sql dans Supabase.':'.')+'</div>'
    :L.length?'<div class="cards">'+L.map(e=>`<button class="card topic" style="border-left-color:#4fb477" onclick="codeOpen('${e.id}')"><h2>${DB.ecr&&DB.ecr[e.id]?'✓ ':''}${esc(e.titre)}</h2><p>${(e.tests||[]).length} test${(e.tests||[]).length>1?'s':''}${(e.indices||[]).length?' · '+e.indices.length+' indice'+(e.indices.length>1?'s':''):''}${e.publie?'':' · brouillon'}</p></button>`).join('')+'</div>'
@@ -2925,14 +2925,14 @@ function codesView(){
 /* éditeur admin des exercices de code */
 const cefSet=(k,v)=>{S.cef[k]=v};
 const cefT=(i,k,v)=>{S.cef.tests[i][k]=v};
-function cefNew(){S.cef={id:null,titre:'',enonce:'',code_depart:'#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n',tests:[{entree:'',sortie:'',visible:true}],indices:'',publie:true,sol:''};render()}
-function cefEdit(id){const e=exoOf(id);S.cef={id,titre:e.titre,enonce:e.enonce||'',code_depart:e.code_depart||'',tests:(e.tests||[]).map(t=>({entree:t.entree||'',sortie:t.sortie||'',visible:t.visible!==false})),indices:(e.indices||[]).join('\n---\n'),publie:!!e.publie,sol:''};S.cfx=null;render()}
+function cefNew(){S.cef={id:null,titre:'',enonce:'',code_depart:'#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n',tests:[{entree:'',sortie:'',visible:true}],indices:'',publie:true,sol:'',langage:'cpp'};render()}
+function cefEdit(id){const e=exoOf(id);S.cef={id,titre:e.titre,enonce:e.enonce||'',code_depart:e.code_depart||'',tests:(e.tests||[]).map(t=>({entree:t.entree||'',sortie:t.sortie||'',visible:t.visible!==false})),indices:(e.indices||[]).join('\n---\n'),publie:!!e.publie,sol:'',langage:e.langage||'cpp'};S.cfx=null;render()}
 function cefTAdd(){S.cef.tests.push({entree:'',sortie:'',visible:true});render()}
 function cefTDel(i){S.cef.tests.splice(i,1);render()}
 async function cefFill(){
   const d=S.cef;if(!d.sol.trim())return flash('Colle d\'abord une solution de référence.',1);
   flash('Compilation de la solution…');
-  const c=await cppCompile(d.sol,null);if(!c.ok)return flash('La solution ne compile pas : '+c.err.slice(0,400),1);
+  const c=await cppCompile(d.sol,null,d.langage);if(!c.ok)return flash('La solution ne compile pas : '+c.err.slice(0,400),1);
   for(const t of d.tests){const r=await cppRun(c.wasm,t.entree||'');if(r.timeout||r.crash)return flash('La solution a planté ou dépassé 5 s sur un test.',1);t.sortie=normOut(r.out)}
   flash('Sorties attendues remplies avec la solution. Relis-les avant d\'enregistrer.');
 }
@@ -2943,9 +2943,10 @@ async function cefSave(){
   if(!tests.length)return flash('Ajoute au moins un test.',1);
   const indices=(d.indices||'').split(/\n-{3,}[ \t]*\n/).map(s=>s.trim()).filter(Boolean).slice(0,10);
   const row={titre:titre.slice(0,200),enonce:(d.enonce||'').slice(0,8000),code_depart:(d.code_depart||'').slice(0,8000),tests,indices,publie:!!d.publie};
+  if(d.langage==='c')row.langage='c';else if(d.id)row.langage='cpp';
   const r=d.id?await sb.from('exos_code').update(row).eq('id',d.id).select()
     :await sb.from('exos_code').insert(Object.assign(row,{chapitre_id:CHAP().id,ordre:codesOf(CHAP().id).length+1})).select();
-  if(refused(r))return flash(/relation|exos_code|column/i.test(refused(r))?'Base pas à jour : lance maj-exos-code.sql dans Supabase.':refused(r),1);
+  if(refused(r))return flash(/relation|exos_code|column|langage/i.test(refused(r))?'Base pas à jour : lance maj-exos-code.sql puis maj-exos-code-langage.sql dans Supabase.':refused(r),1);
   S.cef=null;if(d.id){const w=cwOf(d.id);w.res=null}await codeLoad();flash('Exercice enregistré.');
 }
 async function cefDel(id){
@@ -2975,6 +2976,7 @@ function codeEditor(){
      <button class="btn" onclick="cefEdit('${e.id}')">Modifier</button><button class="btn" onclick="cefPub('${e.id}')">${e.publie?'Masquer':'Publier'}</button><span class="sp"></span>${delBtn('x'+e.id,"cefDel('"+e.id+"')",'Supprimer')}</div>`).join('')||'<div class="note" style="margin:0">Aucun exercice.</div>'}
    <div class="edr" style="border-top:1px solid var(--line);padding-top:12px"><button class="btn" onclick="cefNew()">Nouvel exercice</button></div>`
   +(d?`<div class="edb" style="margin-top:10px"><div class="edr"><label style="flex:1">Titre<input type="text" maxlength="200" value="${esc(d.titre)}" oninput="cefSet('titre',this.value)" style="width:100%"></label>
+     <label>Langage<select onchange="cefSet('langage',this.value);render()"><option value="cpp"${d.langage==='c'?'':' selected'}>C++</option><option value="c"${d.langage==='c'?' selected':''}>C</option></select></label>
      <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" ${d.publie?'checked':''} onchange="cefSet('publie',this.checked)"> visible des membres</label></div>
     <div class="edr"><label style="flex:1">Énoncé (\`code\` et blocs \`\`\` acceptés)<textarea style="min-height:120px" oninput="cefSet('enonce',this.value)">${esc(d.enonce)}</textarea></label></div>
     <div class="edr"><label style="flex:1">Code de départ<textarea class="cin" style="min-height:160px" spellcheck="false" onkeydown="cTab(event)" oninput="cefSet('code_depart',this.value)">${esc(d.code_depart)}</textarea></label></div>
