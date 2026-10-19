@@ -3,13 +3,16 @@ import { runClang } from './bundle.js';
 const dec = new TextDecoder();
 const txt = b => (b == null ? '' : typeof b === 'string' ? b : dec.decode(b));
 self.onmessage = async e => {
-  const { id, code } = e.data;
+  const { id, code, lang } = e.data;
+  const c = lang === 'c';
   let err = '';
   try {
     const files = await runClang(
-      ['clang++', '-std=c++17', '-O1', '-Wall', '-fno-exceptions', 'main.cpp', '-o', 'prog',
-       '-Wl,--max-memory=268435456', '-Wl,-z,stack-size=1048576'],
-      { 'main.cpp': code },
+      c ? ['clang', '-std=c11', '-O1', '-Wall', 'main.c', '-o', 'prog', '-lm',
+           '-Wl,--max-memory=268435456', '-Wl,-z,stack-size=1048576']
+        : ['clang++', '-std=c++17', '-O1', '-Wall', '-fno-exceptions', 'main.cpp', '-o', 'prog',
+           '-Wl,--max-memory=268435456', '-Wl,-z,stack-size=1048576'],
+      c ? { 'main.c': code } : { 'main.cpp': code },
       {
         stderr: b => { err += txt(b); },
         stdout: b => { err += txt(b); },
